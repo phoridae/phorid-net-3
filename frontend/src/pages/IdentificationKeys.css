@@ -1,0 +1,86 @@
+.jumbotron {
+    width: 100%;
+    position: relative;
+}
+  
+.jumbotron img {
+  width: 100%;
+  height: auto;
+}
+  
+  .jumbotron h1 {
+    position: absolute;
+    top: 50%;
+    left: 15%;
+    transform: translateY(-50%);
+    color: white;
+}
+  
+.content p {
+    text-align: center;
+    padding: 20px;
+}
+  
+.button-container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px;
+  }
+  
+.button-container button {
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+
+.data-columns {
+    display: flex;
+    justify-content: space-between;
+    background-color: #f6f6f6;
+}
+
+.character-group, .taxon-list {
+    flex: 1;
+    padding: 20px;  
+}
+
+.taxon-list ul {
+  display: flex; /* Lays out children (li) in a horizontal line */
+  justify-content: center; /* Centers children horizontally in the container */
+  list-style-type: none; /* Removes bullet points from list */
+  padding: 0; /* Removes padding around the list */
+}
+
+.taxon-list li {
+  margin: 0 10px; /* Adds space between list items */
+}
+
+.taxon-list ul {
+  flex-wrap: wrap; /* Allows items to wrap onto the next line */
+  align-items: center; /* Align items vertically in center */
+}
+
+@media (max-width: 768px) {
+  .data-columns {
+      flex-direction: column;
+  }
+}
+
+.character-group label {
+  display: block;
+  margin-bottom: 8px;  /* Increase if more space is needed */
+  padding: 4px;  /* Adds padding around the text and radio button for better touch interaction */
+  cursor: pointer;  /* Indicates that the label is clickable */
+}
+
+.taxon-list ul li button {
+  margin-top: 5px;
+}
+
+.hovered {
+  background-color: #9bcef7; /* Light grey background for highlight */
+  color: #000; /* Change text color if needed */
+}
+
+

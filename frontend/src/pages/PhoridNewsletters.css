@@ -1,0 +1,21 @@
+.newsletterWrapper {
+    margin-left: 5%;
+    margin-right: 5%;
+}
+
+.listWrapper {
+    width: 50%; /* Set the width to 50% or whatever suits your design */
+    margin: left; 
+    padding: 20px; /* Add some padding around the list for better spacing */
+    background-color: #f1efef; /* Optional: adds a background color to the list container */
+    border-radius: 8px; /* Optional: adds rounded corners to the list container */
+}
+
+.List .ant-list-item {
+    border-bottom: 3px solid #ccc; /* Add a subtle line between list items */
+}
+
+:where(.css-dev-only-do-not-override-1x0dypw).ant-list .ant-list-item .ant-list-item-meta .ant-list-item-meta-title >a {
+    font-size: 24px; /* Larger font size for the list titles */
+    color: #333; /* Dark grey color for readability */
+}

@@ -1,0 +1,153 @@
+/* Carousel.css */
+
+.carousel-container {
+    width: 100vw; /* Full viewport width */
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw; /* Center the container to take full viewport width */
+    margin-right: -50vw;
+    overflow: hidden; /* Hide anything overflowing the viewport */
+    border-radius: 20px; /* Rounded corners for the entire carousel */
+}
+
+.full-width-carousel .slick-slide {
+    padding: 0 2vw; /* Add a sliver of space on each side for preview */
+    box-sizing: border-box;
+}
+
+.carousel-slide img, .carousel-slide video {
+    width: 100%;
+    height: 800px;  /* Ensures that the aspect ratio is maintained while filling the width */
+    object-fit: cover;
+    transition: transform 0.3s ease-in-out;
+    border-radius: 20px; /* Rounded corners for the entire carousel */
+}
+
+/* Ensure the slide itself has a relative position */
+.carousel-slide {
+    position: relative;
+    width: 100%;
+}
+
+.white-title {
+    color: white;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInTopToBottom {
+    from {
+        opacity: 0;
+        transform: translateY(-20px); /* Start above the final position */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.carousel-text, .carousel-text-two {
+    position: absolute;
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%); /* Center the element to its own width */
+    padding: 10px 20px;
+    border-radius: 10px;
+    z-index: 10; /* Above the image */
+}
+
+.carousel-text {
+    top: 30%; /* Positioning for the first text */
+    font-size: 48px; /* Larger font size for primary text */
+    animation: fadeIn 3.5s ease-out forwards; /* Apply the fade-in effect */
+    opacity: .5; /* Start from invisible */
+     /* Text color */
+
+}
+
+.carousel-text-two {
+    left: 27.5%;
+    top: 40%; /* Positioning for the secondary text */
+    font-size: 28px; /* Smaller font size for secondary text */
+    animation: fadeInTopToBottom 4.5s ease-out forwards; /* Apply the fade-in effect */
+    opacity: 0; /* Start from invisible */
+    color: #3b3b3b; /* Text color */
+
+}
+
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-dots li button {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 3px;
+    padding: 0;
+    color: #a5a3a300;
+    font-size: 0;
+    background: #b1b0b0;
+    border: 0;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.3s;
+}
+
+.carousel-button {
+    position: absolute;
+    left: 27.5%;
+    top: 40%; /* Positioning for the secondary text */
+    font-size: 36px; /* Smaller font size for secondary text */
+    color: #3b3b3b; /* Text color */
+    z-index: 10;
+    display: flex; /* Use flexbox to layout buttons */
+    gap: 5px; /* Space between buttons */
+    justify-content: center; /* Center buttons horizontally */
+    align-items: center; /* Align buttons vertically */
+}
+
+/* Button color and style */
+.carousel-button .ant-btn {
+    color: inherit; /* Button text color matches the border color */
+    border-color: inherit; /* Use the inherited color for border */
+    background-color: white; /* White background */
+    margin: 1px; /* Space around each button */
+    transition: color 0.3s, border-color 0.3s; /* Smooth transitions for color and border */
+}
+
+/* Individual button colors in ROYGBIV order */
+.carousel-button .ant-btn:nth-child(1) { /* Red */
+    color: #FF0000; /* Red text */
+    border-color: #FF0000; /* Red border */
+}
+
+.carousel-button .ant-btn:nth-child(2) { /* Orange */
+    color: #FFA500; /* Orange text */
+    border-color: #FFA500; /* Orange border */
+}
+
+.carousel-button .ant-btn:nth-child(3) { /* Yellow */
+    color: #e4e42f; /* Yellow text */
+    border-color: #e4e42f; /* Yellow border */
+}
+
+.carousel-button .ant-btn:nth-child(4) { /* Green */
+    color: #056f05; /* Green text */
+    border-color: #056f05; /* Green border */
+}
+
+.carousel-button .ant-btn:nth-child(5) { /* Blue */
+    color: #0909da; /* Blue text */
+    border-color: #0909da; /* Blue border */
+}
+
+.carousel-button .ant-btn:nth-child(6) { /* Violet */
+    color: #8d00d4; /* Violet text */
+    border-color: #8d00d4; /* Violet border */
+}

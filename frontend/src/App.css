@@ -1,0 +1,15 @@
+.App {
+  text-align: center;
+  background-color: #f6f6f6;
+}
+
+.SectionHeader {
+  text-align: left;
+  padding-top: 10%;
+  padding-left: 5%;
+  padding-bottom: 5%;
+  float: left;
+  background-color: #f6f6f6;
+  width: 100%;
+  font-size: 36px;
+}

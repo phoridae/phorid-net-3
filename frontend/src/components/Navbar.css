@@ -1,0 +1,78 @@
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #ffffff;
+    padding: 1rem;
+    color: #333;
+    position: relative;
+    z-index: 1000;
+}
+
+/* LEFT */
+.navbar-left {
+    display: flex;
+    align-items: center;
+    margin-left: 10%;
+}
+
+.logo img {
+    width: 90px;
+    height: auto;
+}
+
+/* CENTER */
+.navbar-center {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+    flex-grow: 1;
+    justify-content: center;
+}
+
+.nav-link {
+    text-decoration: none;
+    color: #333;
+    font-size: 1rem;
+    transition: color 0.25s ease;
+}
+
+.nav-link:hover {
+    color: #666;
+}
+
+/* Active route */
+.nav-link.active {
+    font-weight: 600;
+    border-bottom: 2px solid #333;
+}
+
+/* RIGHT */
+.navbar-right {
+    display: flex;
+    align-items: center;
+    margin-right: 10%;
+    cursor: pointer;
+}
+
+.username-label {
+  margin-right: 10px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.user-icon-button {
+  background: none;
+  border: none;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.user-icon-button:hover {
+  color: #666;
+}

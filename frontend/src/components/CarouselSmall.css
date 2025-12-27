@@ -1,0 +1,123 @@
+/* CarouselSmall.css */
+
+.carousel-small-container {
+    width: 100vw; /* Full viewport width */
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw; /* Center the container to take full viewport width */
+    margin-right: -50vw;
+    overflow: hidden; /* Hide anything overflowing the viewport */
+    border-radius: 20px; /* Rounded corners for the entire carousel */
+    /* transform: translateX(20%); Move the entire carousel to the right */
+}
+
+.full-width-carousel-small .slick-slide {
+    padding-left: 3vw; /* Smaller padding on the left */
+    padding-right: 0.5vw; /* Smaller padding on the right */
+    box-sizing: border-box;
+
+}
+
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-prev, :where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-next {
+    cursor: e-resize;
+    color: rgb(54, 52, 52)
+}
+
+.carousel-small-slide img {
+    width: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease-in-out;
+    border-radius: 20px; /* Rounded corners for the entire carousel */
+    color: white;
+}
+
+.carousel-small-slide video {
+    width: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease-in-out;
+    border-radius: 20px; /* Rounded corners for the entire carousel */
+    color: white;
+}
+
+/* Ensure the slide itself has a relative position */
+.carousel-small-slide {
+    position: relative;
+    width: 100%; /* This ensures the slide takes up full width of its container */
+    padding: 0; /* Optional: remove padding if unnecessary */
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInTopToBottom {
+    from {
+        opacity: 0;
+        transform: translateY(-20px); /* Start above the final position */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.carousel-text, .carousel-text-two {
+    position: absolute;
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%); /* Center the element to its own width */
+    padding: 10px 20px;
+    border-radius: 10px;
+    z-index: 10; /* Above the image */
+}
+
+
+
+.carousel-text-two {
+    left: 27.5%;
+    top: 40%; /* Positioning for the secondary text */
+    font-size: 28px; /* Smaller font size for secondary text */
+    animation: fadeInTopToBottom 4.5s ease-out forwards; /* Apply the fade-in effect */
+    opacity: 0; /* Start from invisible */
+    color: #3b3b3b; /* Text color */
+
+}
+
+.carousel-button {
+    position: absolute;
+    left: 27.5%;
+    top: 40%; /* Positioning for the secondary text */
+    font-size: 36px; /* Smaller font size for secondary text */
+    color: #3b3b3b; /* Text color */
+    z-index: 10;
+    display: flex; /* Use flexbox to layout buttons */
+    gap: 5px; /* Space between buttons */
+    justify-content: center; /* Center buttons horizontally */
+    align-items: center; /* Align buttons vertically */
+}
+
+/* Position text at bottom left of the image with slight bottom padding */
+.carousel-small-text {
+    position: absolute;
+    bottom: 10px; /* Bottom padding */
+    left: 0;
+    padding: 5px 10px; /* Padding inside the text box */
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    color: white; /* Text color */
+    font-size: 16px; /* Adjust font size as needed */
+    width: auto; /* Adjust based on content size or set a specific width */
+    z-index: 10; /* Above the image */
+}
+
+#bottomCarousel {
+    margin-bottom: 25px;
+}
+
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel{
+    margin-bottom: 25px;
+}

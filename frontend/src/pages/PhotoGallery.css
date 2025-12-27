@@ -1,0 +1,41 @@
+.grid-wrapper {
+  display: flex;
+  justify-content: center; /* centers the inner grid */
+  padding: 20px;
+  background-color: #f9f9f9;
+  max-width: 100%;
+}
+
+.grid-wrapper .ant-row {
+  max-width: 1400px;  /* or whatever fits 5 columns comfortably */
+  width: 100%;
+}
+
+
+.carousel-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.carousel-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.carousel-caption {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  text-align: center;
+  padding: 6px 0;
+  font-size: 0.95rem;
+  font-weight: bold;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
