@@ -13,11 +13,11 @@ dist/
 npm-debug.log*
 
 # Large / external assets (temporary)
-frontend/src/assets/
-frontend/public/assets/
-frontend/public/media/
-frontend/public/images/
-*.mp4
-*.pdf
-*.tif
-*.tiff
+# frontend/src/assets/
+# frontend/public/assets/
+# frontend/public/media/
+# frontend/public/images/
+# *.mp4
+# *.pdf
+# *.tif
+# *.tiff
