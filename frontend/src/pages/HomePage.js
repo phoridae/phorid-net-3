@@ -10,15 +10,18 @@ import Carousel from '../components/Carousel';
 
 import automatex  from '../assets/images/automatex.png';
 import pcat from '../assets/images/pcat.png';
+import bioscan from '../assets/images/bioscan-dummy.png'
 import photoGallery from '../assets/images/photoGallery.png';
 import myrioImage from '../assets/images/Myriophora_lucigaster.png';
 import phoridNewsletters from '../assets/images/phoridNewsletters.png';
 import keys from '../assets/images/keys.png';
+import crisis from '../assets/images/crisis-dummy.png'
 import melaImage from '../assets/images/melaloncha_annicae.png';
 import apoImage from '../assets/images/apo_wallaceorum_lateral.jpg';
 import dohrImage from '../assets/images/Dohrniphora_apharea.jpg';
 import megaImage from '../assets/images/megaselia_mithridates.png';
 import mLongaImage from '../assets/images/LACM_ENT_068159_longa_habitus.png';
+import coniceroImage from '../assets/images/Coniceromyia.jpg'
 
 import phorid1 from '../assets/images/megaselia_mithridates.png';
 import phorid2 from '../assets/images/apo_wallaceorum_lateral.jpg';
@@ -27,12 +30,6 @@ import phorid3 from '../assets/images/Dohrniphora_apharea.jpg';
 
 const { Paragraph, Title } = Typography;
 const resources = [
-  {
-    title: 'Automated Material Examined',
-    img: automatex,
-    external: true,
-    href: 'http://example.com/page2',
-  },
   {
     title: 'Phorid Catalog',
     img: pcat,
@@ -46,6 +43,12 @@ const resources = [
     to: '/phoridae/photoGallery',
   },
   {
+    title: 'BioSCAN',
+    img: bioscan,
+    internal: true,
+    to: '/phoridae/bioscan',
+  },
+  {
     title: 'Phorid Newsletters',
     img: phoridNewsletters,
     internal: true,
@@ -57,9 +60,15 @@ const resources = [
     internal: true,
     to: '/phoridae/identificationKeys',
   },
-    {
+  {
+    title: 'Automated Material Examined',
+    img: automatex,
+    external: true,
+    href: 'http://example.com/page2',
+  },
+  {
     title: 'Crisis in Neotropical Dipterology',
-    img: keys,
+    img: crisis,
     internal: true,
     to: '/phoridae/crisis',
   }
@@ -68,6 +77,7 @@ const resources = [
 const gbifTaxa = [
   { title: 'Phoridae', img: mLongaImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=9502' },
   { title: 'Megaselia', img: megaImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=1546413' },
+  { title: 'Coniceromyia', img: coniceroImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=1545951' },
   { title: 'Apocephalus', img: apoImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=1545388' },
   { title: 'Dohrniphora', img: dohrImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=1548850' },
   { title: 'Melaloncha', img: melaImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=1550009' },
@@ -143,7 +153,7 @@ const HomePage = () => {
       <h2 className="SectionHeader">News and Resources</h2>
       <Row gutter={[24, 24]}>
         {resources.map((item) => (
-          <Col xs={24} sm={12} md={8} lg={6} key={item.title}>
+          <Col xs={24} sm={12} md={8} lg={6}  xl={4} xxl={3} key={item.title}>
             {item.internal ? (
               <Link to={item.to}>
                 <Card hoverable cover={<img alt={item.title} src={item.img} />}>
@@ -167,7 +177,7 @@ const HomePage = () => {
       </h2>
       <Row gutter={[24, 24]}>
         {gbifTaxa.map((item) => (
-          <Col xs={24} sm={12} md={8} lg={6} key={item.title}>
+          <Col xs={24} sm={12} md={8} lg={6}  xl={4} xxl={3} key={item.title}>
             <a
               href={item.href}
               target="_blank"

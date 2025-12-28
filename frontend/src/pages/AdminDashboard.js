@@ -44,8 +44,8 @@ const AdminDashboard = () => {
           </Col>
 
           <Col xs={24} sm={12} md={12} lg={6}>
-            <Card hoverable title="Coming Soon">
-              Additional administrative tools will appear here.
+            <Card hoverable title="Describer">
+              Describe specimens and generate descriptions.
             </Card>
           </Col>
         </Row>

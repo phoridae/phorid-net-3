@@ -1,4 +1,5 @@
 import { Table, Typography } from "antd";
+import crisisPDF from "../assets/CrisisNeotrDipt.pdf"
 
 const { Title, Paragraph, Link } = Typography;
 
@@ -78,9 +79,9 @@ export default function Crisis() {
       </Paragraph>
 
       <Paragraph>
-        <Link href="/pdfs/Malaise_Trap_Crisis_Neotropical_Dipterology.pdf" target="_blank">
+        <a href={crisisPDF} target="_blank" rel="noReferrer">
           Malaise Trap Catches and the Crisis in Neotropical Dipterology (PDF)
-        </Link>
+        </a>
       </Paragraph>
 
       <Title level={4}>Order Composition by Trap</Title>
