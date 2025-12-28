@@ -18,6 +18,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
+import Crisis from './pages/Crisis';
 
 
 // Use hash on GitHub Pages; browser locally
@@ -48,6 +49,8 @@ export default function App() {
               </ProtectedRoute>
             } />
           <Route path="/phoridae/photoGallery" element={<PhotoGallery />} />
+          <Route path="/phoridae/crisis" element={<Crisis />} />
+
           {/* (Optional) catch-all to a NotFound page */}
           {/* <Route path="*" element={<NotFound />} /> */}
         </Routes>

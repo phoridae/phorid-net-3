@@ -1,6 +1,8 @@
 import React from 'react';
 import { Card, Row, Col } from 'antd';
 import { Typography } from 'antd';
+import { ExportOutlined } from "@ant-design/icons";
+
 
 import { Link } from 'react-router-dom';
 import '../App.css';
@@ -55,6 +57,12 @@ const resources = [
     internal: true,
     to: '/phoridae/identificationKeys',
   },
+    {
+    title: 'Crisis in Neotropical Dipterology',
+    img: keys,
+    internal: true,
+    to: '/phoridae/crisis',
+  }
 ];
 
 const gbifTaxa = [
@@ -160,9 +168,25 @@ const HomePage = () => {
       <Row gutter={[24, 24]}>
         {gbifTaxa.map((item) => (
           <Col xs={24} sm={12} md={8} lg={6} key={item.title}>
-            <a href={item.href} target="_blank" rel="noreferrer">
-              <Card hoverable cover={<img alt={item.title} src={item.img} />}>
-                <Card.Meta title={item.title} />
+            <a
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${item.title} on GBIF (opens in new tab)`}
+            >
+              <Card
+                hoverable
+                cover={<img alt={item.title} src={item.img} />}
+              >
+                <Card.Meta
+                  title={
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      {item.title}
+                      <ExportOutlined className="gbif-title-icon" style={{ color: "#4CAF50" }} // subtle GBIF green
+/>
+                    </span>
+                  }
+                />
               </Card>
             </a>
           </Col>

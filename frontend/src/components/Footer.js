@@ -9,12 +9,12 @@ const Footer = () => {
       
       {/* Top navigation links */}
       <nav className="footer-links">
-        <Link to="/phoridae/newsletters">Newsletters</Link>
-        <Link to="/phoridae/identificationKeys">Keys</Link>
-        <Link to="/phoridae/photoGallery">Gallery</Link>
-        <Link to="/phoridae/morphometrics">Morphometrics</Link>
-        <Link to="/about">About</Link>
         <Link to="/people">People</Link>
+        <Link to="/phoridae/projects">Projects</Link>
+        <Link to="/phoridae/photoGallery">Gallery</Link>
+        <Link to="/phoridae/identificationKeys">Keys</Link>
+        <Link to="/phoridae/newsletters">Newsletters</Link>
+        <Link to="/about">About</Link>
       </nav>
 
       {/* Center logo */}
