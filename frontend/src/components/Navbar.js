@@ -4,9 +4,17 @@ import "./Navbar.css";
 import logoImage from "../assets/images/Megaselia_logo.jpg";
 import { FaUser } from "react-icons/fa";
 import { useAuth } from "../auth/AuthContext";
+import { Popconfirm, message } from "antd";
+
 
 function Navbar() {
   const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    message.success("Signed out");
+  };
+
 
   return (
     <nav className="navbar">
@@ -44,26 +52,37 @@ function Navbar() {
 
       <div className="navbar-right">
         {user ? (
-            <>
+          <>
             <span className="username-label">Hello, {user.username}</span>
-            <button
-                onClick={logout}
-                className="user-icon-button"
-                title="Logout"
+
+            <Popconfirm
+              title="Sign out?"
+              description="Are you sure you want to sign out?"
+              onConfirm={handleLogout}
+              okText="Sign out"
+              cancelText="Cancel"
+              placement="bottomRight"
+              okButtonProps={{ danger: true }}
             >
+              <button
+                className="user-icon-button"
+                title="Sign out"
+                type="button"
+              >
                 <FaUser size={24} />
-            </button>
-            </>
+              </button>
+            </Popconfirm>
+          </>
         ) : (
-            <NavLink
+          <NavLink
             to="/login"
             className="user-icon-button"
             title="Login"
-            >
+          >
             <FaUser size={24} />
-            </NavLink>
+          </NavLink>
         )}
-        </div>
+      </div>
     </nav>
   );
 }

@@ -14,7 +14,7 @@ const Footer = () => {
         <Link to="/phoridae/photoGallery">Gallery</Link>
         <Link to="/phoridae/identificationKeys">Keys</Link>
         <Link to="/phoridae/newsletters">Newsletters</Link>
-        <Link to="/about">About</Link>
+        <Link to="phoridae/about">About</Link>
       </nav>
 
       {/* Center logo */}
@@ -29,7 +29,7 @@ const Footer = () => {
         </div>
 
         <div className="social-links">
-          <a href="https://github.com/phoridae" target="_blank" rel="noreferrer">GitHub</a>
+          <a href="https://github.com/phoridae/phorid-net-3" target="_blank" rel="noreferrer">GitHub</a>
           <a href="#" aria-disabled>Bluesky</a>
           <a href="#" aria-disabled>Instagram</a>
         </div>
