@@ -1,0 +1,23 @@
+# Node
+node_modules/
+.env
+
+# Builds
+build/
+dist/
+
+# OS
+.DS_Store
+
+# Logs
+npm-debug.log*
+
+# Large / external assets (temporary)
+# frontend/src/assets/
+# frontend/public/assets/
+# frontend/public/media/
+# frontend/public/images/
+# *.mp4
+# *.pdf
+# *.tif
+# *.tiff
