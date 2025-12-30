@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Row, Col } from 'antd';
+import { Card, Row, Col, List } from 'antd';
 import { Typography } from 'antd';
 import { ExportOutlined } from "@ant-design/icons";
 
@@ -83,6 +83,19 @@ const gbifTaxa = [
   { title: 'Melaloncha', img: melaImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=1550009' },
   { title: 'Myriophora', img: myrioImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=4575472' },
 ];
+
+const links = [
+  {
+      title: 'LACM Entomology',
+      description: 'Website for the Entomology Section of the Natural History Museum of Los Angeles County',
+      ref: "https://nhm.org/research-collections/departments/entomology"
+  },
+  {
+      title: 'Fly Obsession',
+      description: 'Diptera blog hosted by former LACM Entomology Curator, Brian V. Brown',
+      ref: "https://flyobsession.net/"
+  },  
+]
 
 const HomePage = () => {
   return (
@@ -192,8 +205,7 @@ const HomePage = () => {
                   title={
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                       {item.title}
-                      <ExportOutlined className="gbif-title-icon" style={{ color: "#4CAF50" }} // subtle GBIF green
-/>
+                      <ExportOutlined className="gbif-title-icon" style={{ color: "#4CAF50" }}/>
                     </span>
                   }
                 />
@@ -202,6 +214,84 @@ const HomePage = () => {
           </Col>
         ))}
       </Row>
+      
+      <h2 className="SectionHeader" style={{ marginTop: 40 }}>
+        Links We Love
+      </h2>
+      <div
+        style={{
+          backgroundColor: "#f6f6f6",
+          minHeight: "auto",
+          paddingTop: 48,
+          paddingLeft: 24,
+          paddingRight: 24,
+          paddingBottom: 0,
+        }}
+      >
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <Row gutter={[24, 24]}>
+
+            {/* LACM Entomology */}
+            <Col xs={24} sm={12} md={12} lg={6}>
+              <a
+                href="https://nhm.org/research-collections/departments/entomology"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none" }}
+              >
+                <Card hoverable title="LACM Entomology">
+                  Website of the Entomology Section of the Natural History Museum of Los
+                  Angeles County
+                </Card>
+              </a>
+            </Col>
+
+            {/* Fly Obsession */}
+            <Col xs={24} sm={12} md={12} lg={6}>
+              <a
+                href="https://flyobsession.net/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none" }}
+              >
+                <Card hoverable title="Fly Obsession">
+                  A Diptera blog hosted by former LACM Entomology Curator, Brian V. Brown
+                </Card>
+              </a>
+            </Col>
+
+            {/* Fly School */}
+            <Col xs={24} sm={12} md={12} lg={6}>
+              <a
+                href="https://dipteracourse.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none" }}
+              >
+                <Card hoverable title="Fly School">
+                  Fly School is course dedicated to fieldwork, natural history, and systematics of Diptera
+                </Card>
+              </a>
+            </Col>
+
+            {/* Dipterists Society */}
+            <Col xs={24} sm={12} md={12} lg={6}>
+              <a
+                href="https://dipterists.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none" }}
+              >
+                <Card hoverable title="Dipterists Society">
+                  An international society dedicated the insect order Diptera, or true flies
+                </Card>
+              </a>
+            </Col>
+
+          </Row>
+        </div>
+      </div>
+
 
     </div>
   );
