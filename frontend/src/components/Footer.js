@@ -9,7 +9,7 @@ const Footer = () => {
       
       {/* Top navigation links */}
       <nav className="footer-links">
-        <Link to="/people">People</Link>
+        <Link to="/phoridae/people">People</Link>
         <Link to="/phoridae/projects">Projects</Link>
         <Link to="/phoridae/photoGallery">Gallery</Link>
         <Link to="/phoridae/identificationKeys">Keys</Link>

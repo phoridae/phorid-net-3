@@ -121,3 +121,7 @@
 :where(.css-dev-only-do-not-override-1x0dypw).ant-carousel{
     margin-bottom: 25px;
 }
+
+.carousel-small-slide.active {
+  outline: 2px solid #1890ff;
+}
