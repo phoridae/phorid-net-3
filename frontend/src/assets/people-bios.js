@@ -10,10 +10,10 @@ leading authorities on the family. He has described hundreds of species from
 around the world and has worked extensively on phorid taxonomy, systematics,
 behavior, and biodiversity, with a particular emphasis on the Neotropical Region.
     `.trim(),
-    image: `${process.env.PUBLIC_URL}/images/people/melaloncha_face_illustration.png`,
+    image: `${process.env.PUBLIC_URL}/images/people/Brian-Brown-5.webp`,
     links: [
-      { label: "Website", url: "https://flyobsession.net/" },
-      { label: "Google Scholar", url: "https://scholar.google.com/" },
+      { label: "Blog", url: "https://flyobsession.net/" },
+      { label: "Google Scholar", url: "https://scholar.google.com/citations?hl=en&user=VOfWJhIAAAAJ&view_op=list_works&sortby=pubdate" },
     ],
   },
 
@@ -28,9 +28,10 @@ Phoridae) and other hyperdiverse insect groups. Her research integrates molecula
 and morphological approaches to taxonomy, species discovery, and natural history,
 including work on large-scale biodiversity projects such as BioSCAN.
     `.trim(),
-    image: `${process.env.PUBLIC_URL}/images/people/melaloncha_face_illustration.png`,
+    image: `${process.env.PUBLIC_URL}/images/people/eahartop.jpg`,
     links: [
       { label: "NTNU Profile", url: "https://www.ntnu.edu/employees/emily.hartop" },
+      { label: "Google Scholar", url: "https://scholar.google.com/citations?hl=en&user=X0SmxVkAAAAJ&view_op=list_works&sortby=pubdate"}
     ],
   },
 
@@ -45,7 +46,9 @@ systematics, and biodiversity of Phoridae (Diptera), with an emphasis on Brazili
 fauna and patterns of diversity and distribution within the family.
     `.trim(),
     image: `${process.env.PUBLIC_URL}/images/people/melaloncha_face_illustration.png`,
-    links: [],
+    links: [
+      { label: "Google Scholar", url: "https://scholar.google.com/citations?hl=pt-BR&user=CVBbKQsAAAAJ&view_op=list_works&sortby=pubdate"}
+    ],
   },
 
   {
@@ -59,7 +62,9 @@ distribution of Brazilian Phoridae (Diptera), including co-authorship on work
 addressing taxonomic knowledge and biodiversity of the group.
     `.trim(),
     image: `${process.env.PUBLIC_URL}/images/people/melaloncha_face_illustration.png`,
-    links: [],
+    links: [
+      { label: "Google Scholar", url: "https://scholar.google.co.uk/citations?hl=en&user=lK4o1jQAAAAJ&view_op=list_works&sortby=pubdate"}
+    ],
   },
 
   {
@@ -72,8 +77,11 @@ John Hash is a developer and research collaborator contributing to the technical
 infrastructure, data systems, and tools that support phorid research, data
 integration, and public-facing resources on Phoridae.
     `.trim(),
-    image: `${process.env.PUBLIC_URL}/images/people/melaloncha_face_illustration.png`,
-    links: [],
+    image: `${process.env.PUBLIC_URL}/images/people/JohnHashUCprofile.jpg`,
+    links: [
+      { label: "Website", url: "https://www.johnhash.me" },
+      { label: "Google Scholar", url: "https://scholar.google.com/citations?hl=en&user=L3eJEPwAAAAJ&view_op=list_works&sortby=pubdate"}
+    ],
   },
 ];
 
