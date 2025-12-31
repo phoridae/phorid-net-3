@@ -71,8 +71,8 @@ const resources = [
     img: crisis,
     internal: true,
     to: '/phoridae/crisis',
-  }
-];
+  },
+];  // this this grows beyond three smaller rows on the right, let's make the last row have a more link to a resources page
 
 const gbifTaxa = [
   { title: 'Phoridae', img: mLongaImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=9502' },
@@ -83,19 +83,6 @@ const gbifTaxa = [
   { title: 'Melaloncha', img: melaImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=1550009' },
   { title: 'Myriophora', img: myrioImage, href: 'https://www.gbif.org/occurrence/charts?taxon_key=4575472' },
 ];
-
-const links = [
-  {
-      title: 'LACM Entomology',
-      description: 'Website for the Entomology Section of the Natural History Museum of Los Angeles County',
-      ref: "https://nhm.org/research-collections/departments/entomology"
-  },
-  {
-      title: 'Fly Obsession',
-      description: 'Diptera blog hosted by former LACM Entomology Curator, Brian V. Brown',
-      ref: "https://flyobsession.net/"
-  },  
-]
 
 const HomePage = () => {
   return (
@@ -164,56 +151,188 @@ const HomePage = () => {
 
       {/* News & Resources */}
       <h2 className="SectionHeader">News and Resources</h2>
-      <Row gutter={[24, 24]}>
-        {resources.map((item) => (
-          <Col xs={24} sm={12} md={8} lg={6}  xl={4} xxl={3} key={item.title}>
-            {item.internal ? (
-              <Link to={item.to}>
-                <Card hoverable cover={<img alt={item.title} src={item.img} />}>
-                  <Card.Meta title={item.title} />
+
+      {(() => {
+        const featuredResource = resources.find(
+          (r) => r.title === "Identification Keys"
+        );
+
+        const otherResources = resources.filter(
+          (r) => r !== featuredResource
+        );
+
+        return (
+          <Row gutter={[32, 32]}>
+            {/* FEATURED CARD */}
+            <Col xs={24} md={12} lg={8}>
+              <Link to={featuredResource.to}>
+                <Card
+                  hoverable
+                  style={{ height: "100%" }}
+                  cover={
+                    <img
+                      alt={featuredResource.title}
+                      src={featuredResource.img}
+                      style={{
+                        height: 300,
+                        objectFit: "cover",
+                      }}
+                    />
+                  }
+                >
+                  <Card.Meta
+                    title={
+                      <Title level={4} style={{ marginBottom: 0 }}>
+                        {featuredResource.title}
+                      </Title>
+                    }
+                    description={
+                      <Paragraph style={{ marginTop: 8 }}>
+                        Explore interactive and illustrated identification keys for Phoridae,
+                        designed to support accurate identification and comparative
+                        research.
+                      </Paragraph>
+                    }
+                  />
                 </Card>
               </Link>
-            ) : (
-              <a href={item.href} target="_blank" rel="noreferrer">
-                <Card hoverable cover={<img alt={item.title} src={item.img} />}>
-                  <Card.Meta title={item.title} />
-                </Card>
-              </a>
-            )}
-          </Col>
-        ))}
-      </Row>
+            </Col>
 
-      {/* GBIF */}
+            {/* SUPPORTING GRID */}
+            <Col xs={24} md={12} lg={16}>
+              <Row gutter={[24, 24]}>
+                {otherResources.map((item) => (
+                  <Col xs={24} sm={12} lg={8} key={item.title}>
+                    {item.internal ? (
+                      <Link to={item.to}>
+                        <Card
+                          hoverable
+                          cover={<img alt={item.title} src={item.img} />}
+                        >
+                          <Card.Meta title={item.title} />
+                        </Card>
+                      </Link>
+                    ) : (
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <Card
+                          hoverable
+                          cover={<img alt={item.title} src={item.img} />}
+                        >
+                          <Card.Meta title={item.title} />
+                        </Card>
+                      </a>
+                    )}
+                  </Col>
+                ))}
+              </Row>
+            </Col>
+          </Row>
+        );
+      })()}
+
+
+      {/* Featured Taxa */}
       <h2 className="SectionHeader" style={{ marginTop: 40 }}>
         Featured Taxa
       </h2>
-      <Row gutter={[24, 24]}>
-        {gbifTaxa.map((item) => (
-          <Col xs={24} sm={12} md={8} lg={6}  xl={4} xxl={3} key={item.title}>
-            <a
-              href={item.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`${item.title} on GBIF (opens in new tab)`}
-            >
-              <Card
-                hoverable
-                cover={<img alt={item.title} src={item.img} />}
+
+      {(() => {
+        const featuredTaxon = gbifTaxa.find(
+          (t) => t.title === "Phoridae"
+        );
+
+        const otherTaxa = gbifTaxa.filter(
+          (t) => t !== featuredTaxon
+        );
+
+        return (
+          <Row gutter={[32, 32]}>
+
+            {/* LEFT: TAXA GRID */}
+            <Col xs={24} md={16}>
+              <Row gutter={[24, 24]}>
+                {otherTaxa.map((item) => (
+                  <Col xs={24} sm={12} lg={8} key={item.title}>
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${item.title} on GBIF (opens in new tab)`}
+                    >
+                      <Card
+                        hoverable
+                        cover={<img alt={item.title} src={item.img} />}
+                      >
+                        <Card.Meta
+                          title={
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                              }}
+                            >
+                              {item.title}
+                              <ExportOutlined
+                                className="gbif-title-icon"
+                                style={{ color: "#4CAF50" }}
+                              />
+                            </span>
+                          }
+                        />
+                      </Card>
+                    </a>
+                  </Col>
+                ))}
+              </Row>
+            </Col>
+
+            {/* RIGHT: FEATURED TAXON */}
+            <Col xs={24} md={8}>
+              <a
+                href={featuredTaxon.href}
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <Card.Meta
-                  title={
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                      {item.title}
-                      <ExportOutlined className="gbif-title-icon" style={{ color: "#4CAF50" }}/>
-                    </span>
+                <Card
+                  hoverable
+                  style={{ height: "100%" }}
+                  cover={
+                    <img
+                      alt={featuredTaxon.title}
+                      src={featuredTaxon.img}
+                      style={{
+                        height: 300,
+                        objectFit: "cover",
+                      }}
+                    />
                   }
-                />
-              </Card>
-            </a>
-          </Col>
-        ))}
-      </Row>
+                >
+                  <Card.Meta
+                    title={
+                      <Title level={4} style={{ marginBottom: 0 }}>
+                        {featuredTaxon.title}
+                      </Title>
+                    }
+                    description={
+                      <Paragraph style={{ marginTop: 8 }}>
+                        Explore occurrence data, distribution patterns, and temporal
+                        trends using GBIF records.
+                      </Paragraph>
+                    }
+                  />
+                </Card>
+              </a>
+            </Col>
+
+          </Row>
+        );
+      })()}
+
       
       <h2 className="SectionHeader" style={{ marginTop: 40 }}>
         Links We Love
