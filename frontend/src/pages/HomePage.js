@@ -6,7 +6,7 @@ import { ExportOutlined } from "@ant-design/icons";
 
 import { Link } from 'react-router-dom';
 import '../App.css';
-import Carousel from '../components/Carousel';
+import HeroIntro from '../components/HeroIntro';
 
 import automatex  from '../assets/images/automatex.png';
 import pcat from '../assets/images/pcat.png';
@@ -87,7 +87,7 @@ const gbifTaxa = [
 const HomePage = () => {
   return (
     <div className="App" style={{ padding: '24px' }}>
-      <Carousel />  
+      <HeroIntro />  
 
       {/* Phoridae intro section */}
       <div style={{ padding: '48px 24px', maxWidth: 1100, margin: '0 auto' }}>

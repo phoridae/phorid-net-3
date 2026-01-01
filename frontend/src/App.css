@@ -22,3 +22,7 @@
 .ant-card-hoverable:hover .gbif-title-icon {
   opacity: 0.7;
 }
+
+html, body {
+  overflow-x: hidden;
+}
