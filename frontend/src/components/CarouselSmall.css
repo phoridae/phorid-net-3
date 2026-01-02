@@ -125,3 +125,70 @@
 .carousel-small-slide.active {
   outline: 2px solid #1890ff;
 }
+
+/* Strong, visible navigation arrows */
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-prev,
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-next {
+  width: 44px;
+  height: 44px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  z-index: 20;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Arrow icons */
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-prev::before,
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-next::before {
+  font-size: 20px;
+  color: white;
+  opacity: 1;
+}
+
+/* Positioning */
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-prev {
+  left: 16px;
+}
+
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-next {
+  right: 16px;
+}
+
+/* Hover feedback */
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-prev:hover,
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-next:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* Carousel dots container */
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-dots {
+  bottom: -24px;
+}
+
+/* Inactive dots */
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-dots li button {
+  width: 18px;
+  height: 4px;
+  background: #b0b0b0;
+  opacity: 0.7;
+  border-radius: 4px;
+}
+
+/* Active dot */
+:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-dots li.slick-active button {
+  background: #1890ff;
+  opacity: 1;
+}
+
+.carousel-small-container::after {
+  content: "⇆ Drag or use arrows";
+  position: absolute;
+  bottom: -28px;
+  right: 16px;
+  font-size: 12px;
+  color: #666;
+}
+

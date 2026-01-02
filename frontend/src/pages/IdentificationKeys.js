@@ -193,9 +193,14 @@ const IdentificationKeys = () => {
       </div>
 
       <div className="content">
-        <p>1. Select a genus</p>
-        <p>2. Toggle the characters</p>
-        <p>3. Compare photos and descriptions of up to three taxa</p>
+        <p>
+          <strong>1.</strong> Select a genus.
+          <br />
+          <strong>2.</strong> Toggle the characters.
+          <br />
+          <strong>3.</strong> Compare photos and descriptions of up to three taxa.
+        </p>
+
 
         <div className="button-container">
           <button onClick={() => handleButtonClick('Myriophora')}>Myriophora</button>
