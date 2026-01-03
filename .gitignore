@@ -12,6 +12,12 @@ dist/
 # Logs
 npm-debug.log*
 
+# env
+backend/.env
+backend/test-db.js
+
+
+
 # Large / external assets (temporary)
 # frontend/src/assets/
 # frontend/public/assets/

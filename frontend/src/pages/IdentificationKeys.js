@@ -194,12 +194,12 @@ const IdentificationKeys = () => {
 
       <div className="content">
         <p>
-          <strong>1.</strong> Select a genus.
-          <br />
-          <strong>2.</strong> Toggle the characters.
-          <br />
-          <strong>3.</strong> Compare photos and descriptions of up to three taxa.
-        </p>
+        <strong>1.</strong> Select a genus.
+        <br />
+        <strong>2.</strong> Toggle the characters.
+        <br />
+        <strong>3.</strong> Compare photos and descriptions of up to three taxa.
+      </p>
 
 
         <div className="button-container">

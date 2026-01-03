@@ -1,14 +1,11 @@
-export async function fetchTaxonData(character) {
-    try {
-    //   const response = await fetch(`https://your-api-url/taxa?character=${character}`);
-    //   const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Failed to fetch taxon data:", error);
-    }
-}
+export async function fetchTaxonData(character) { 
+    try { 
+        // const response = await fetch(https://your-api-url/taxa?character=${character}); 
+        //     const data = await response.json(); 
+            return data; 
+        } catch (error) { console.error("Failed to fetch taxon data:", error); } }
 
-const data = [
+    const data = [
    {
         "id": 10,
         "species_id": 10,
