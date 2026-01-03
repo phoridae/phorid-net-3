@@ -86,7 +86,7 @@ const IdentificationKeys = () => {
     const characters = await fetchCharacterData(buttonLabel);
     setCharacterData(characters || {});
 
-    const taxonResponse = await fetchTaxonData();
+    const taxonResponse = await fetchTaxonData(buttonLabel, selectedValues);
     setTaxonData(taxonResponse || []);
 
     const initialSelectedValues = {};
@@ -204,8 +204,8 @@ const IdentificationKeys = () => {
 
         <div className="button-container">
           <button onClick={() => handleButtonClick('Myriophora')}>Myriophora</button>
-          <button onClick={() => handleButtonClick('Bus')}>Bus</button>
-          <button onClick={() => handleButtonClick('Cus')}>Cus</button>
+          <button onClick={() => handleButtonClick('Pseudomyriophora')}>Pseudomyriophora</button>
+          <button onClick={() => handleButtonClick('Oreophilophora')}>Oreophilophora</button>
         </div>
 
         <div className="data-columns">
