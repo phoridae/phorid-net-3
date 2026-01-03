@@ -34,7 +34,7 @@ const resources = [
     title: 'Phorid Catalog',
     img: pcat,
     external: true,
-    href: 'http://example.com/page2',
+    href: '/phoridae/pcat',
   },
   {
     title: 'Photo Gallery',

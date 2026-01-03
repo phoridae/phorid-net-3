@@ -37,15 +37,15 @@ function Navbar() {
         <NavLink to="/phoridae/identificationKeys" className="nav-link">
            Keys
         </NavLink>
-        <NavLink to="/phoridae/newsletters" className="nav-link">
-          Newsletters
+        <NavLink to="/phoridae/pcat" className="nav-link">
+          Catalog
         </NavLink>
         <NavLink to="/phoridae/about" className="nav-link">
           About
         </NavLink>
         {user && (
         <NavLink to="/admin" className="nav-link">
-            Admin
+          Admin
         </NavLink>
         )}
       </div>

@@ -1,0 +1,130 @@
+import React, { useEffect, useState } from "react";
+import { Table, Spin, Tag } from "antd";
+import { LinkOutlined } from "@ant-design/icons";
+
+const GBIF_FAMILY_KEY = 9502; // Phoridae
+
+const STATUS_FILTERS = [
+  { text: "Accepted", value: "ACCEPTED" },
+  { text: "Doubtful", value: "DOUBTFUL" },
+];
+
+const CACHE_KEY = "gbif_genera";
+
+const GeneraTab = () => {
+  const [loading, setLoading] = useState(false);
+  const [genera, setGenera] = useState([]);
+
+  const totalGenera = genera.length;
+  const acceptedGenera = genera.filter(
+    (g) => g.taxonomicStatus === "ACCEPTED"
+  ).length;
+
+  useEffect(() => {
+    fetchGenera();
+  }, []);
+
+  // Session cache: cleared when browser/tab closes
+  const fetchGenera = async () => {
+    setLoading(true);
+
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (cached) {
+      setGenera(JSON.parse(cached));
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `https://api.gbif.org/v1/species/${GBIF_FAMILY_KEY}/children?limit=450`
+      );
+      const json = await res.json();
+
+      const filtered = (json.results || [])
+        .filter((r) => r.rank === "GENUS")
+        .map((r) => ({
+          key: r.key,
+          genus: r.genus,
+          scientificName: r.scientificName,
+          taxonomicStatus: r.taxonomicStatus,
+          publishedIn: r.publishedIn,
+        }));
+
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(filtered));
+      setGenera(filtered);
+    } catch (err) {
+      console.error("Failed to fetch genera from GBIF", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const columns = [
+    {
+      title: "GBIF Key",
+      dataIndex: "key",
+      key: "key",
+      width: 140,
+      render: (value) => (
+        <a
+          href={`https://www.gbif.org/species/${value}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {value} <LinkOutlined />
+        </a>
+      ),
+    },
+    {
+      title: "Genus",
+      dataIndex: "genus",
+      key: "genus",
+    },
+    {
+      title: "Scientific Name",
+      dataIndex: "scientificName",
+      key: "scientificName",
+    },
+    {
+      title: "Status",
+      dataIndex: "taxonomicStatus",
+      key: "taxonomicStatus",
+      filters: STATUS_FILTERS,
+      onFilter: (value, record) => record.taxonomicStatus === value,
+      width: 160,
+    },
+    {
+      title: "Published In",
+      dataIndex: "publishedIn",
+      key: "publishedIn",
+      ellipsis: true,
+    },
+  ];
+
+  if (loading) return <Spin />;
+
+  return (
+    <>
+      <div style={{ marginBottom: 12 }}>
+        <Tag color="blue">Data source: GBIF</Tag>
+        <div style={{ marginTop: 4, color: "#666" }}>
+            <div>Number of genera: {totalGenera}</div>
+            <div>Number of accepted genera: {acceptedGenera}</div>
+        </div>
+      </div>
+
+      <Table
+        columns={columns}
+        dataSource={genera}
+        rowKey="key"
+        pagination={{
+          pageSize: 50,
+          showSizeChanger: false,
+        }}
+      />
+    </>
+  );
+};
+
+export default GeneraTab;

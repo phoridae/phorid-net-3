@@ -13,7 +13,7 @@ const Footer = () => {
         <Link to="/phoridae/projects">Projects</Link>
         <Link to="/phoridae/photoGallery">Gallery</Link>
         <Link to="/phoridae/identificationKeys">Keys</Link>
-        <Link to="/phoridae/newsletters">Newsletters</Link>
+        <Link to="/phoridae/pcat">Catalog</Link>
         <Link to="phoridae/about">About</Link>
       </nav>
 

@@ -5,6 +5,7 @@ const keyCharacters = require("../data/keyCharacters");
 
 /**
  * GET /flies/speciesList?selectedGenus
+ * Returns species for a genus with authors (as list), year, and habitus image
  */
 router.get("/speciesList", async (req, res, next) => {
   try {
@@ -15,20 +16,54 @@ router.get("/speciesList", async (req, res, next) => {
 
     const [rows] = await pool.query(
       `
-      SELECT id, genus, specific_epithet, habitus_image
-      FROM species
-      WHERE genus = ?
-        AND specific_epithet <> 'Unidentified'
-      ORDER BY specific_epithet
+      SELECT
+        s.id,
+        s.genus,
+        s.specific_epithet,
+        s.year,
+        s.habitus_image,
+        JSON_ARRAYAGG(
+          JSON_OBJECT(
+            'first_name', p.first_name,
+            'last_name', p.last_name
+          )
+        ) AS authors
+      FROM species s
+      LEFT JOIN species_people sp ON sp.species_id = s.id
+      LEFT JOIN people p ON p.id = sp.people_id
+      WHERE s.genus = ?
+        AND s.specific_epithet <> 'Unidentified'
+      GROUP BY
+        s.id,
+        s.genus,
+        s.specific_epithet,
+        s.year,
+        s.habitus_image
+      ORDER BY
+        s.specific_epithet
       `,
       [selectedGenus]
     );
 
-    res.json(rows);
+    // mysql2 returns JSON columns already parsed in most setups,
+    // but we guard just in case
+    const result = rows.map(r => ({
+      id: r.id,
+      genus: r.genus,
+      specific_epithet: r.specific_epithet,
+      year: r.year,
+      habitus_image: r.habitus_image,
+      authors: Array.isArray(r.authors)
+        ? r.authors
+        : JSON.parse(r.authors || "[]"),
+    }));
+
+    res.json(result);
   } catch (err) {
     next(err);
   }
 });
+
 
 /**
  * GET /flies/speciesInfo?id

@@ -20,7 +20,8 @@ import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import Crisis from './pages/Crisis';
 import About from './pages/About';
-import People from './pages/People'
+import People from './pages/People';
+import Pcat from './pages/PhoridCatalogPublic';
 
 
 // Use hash on GitHub Pages; browser locally
@@ -54,7 +55,7 @@ export default function App() {
           <Route path="/phoridae/crisis" element={<Crisis />} />
           <Route path="/phoridae/about" element={<About />} />
           <Route path="/phoridae/people" element={<People />} />
-
+          <Route path="/phoridae/pcat" element={<Pcat />} />
 
 
           {/* (Optional) catch-all to a NotFound page */}
