@@ -6,26 +6,39 @@ const GBIF_FAMILY_KEY = 9502; // Phoridae
 const CACHE_KEY = "gbif_phoridae_species";
 const PAGE_LIMIT = 1000;
 
-const SpeciesTab = () => {
+const SpeciesTab = ({ selectedGenus }) => {
   const [loading, setLoading] = useState(false);
   const [species, setSpecies] = useState([]);
+  const [filteredSpecies, setFilteredSpecies] = useState([]);
   const [statusFilters, setStatusFilters] = useState([]);
   const [genusFilters, setGenusFilters] = useState([]);
+  const [activeGenusFilters, setActiveGenusFilters] = useState([]);
 
-    const totalSpecies = species.length;
-    const acceptedSpecies = species.filter(
-        (s) => s.taxonomicStatus === "ACCEPTED"
-    ).length;
-
-    const uniqueGeneraCount = new Set(
-    species.map((s) => s.genus).filter(Boolean)
-    ).size;
-
+  // -------- Fetch once (cache-aware) --------
   useEffect(() => {
     fetchSpecies();
   }, []);
 
-  // Session cache: cleared when browser/tab closes
+  // -------- Sync genus from Genera tab --------
+  useEffect(() => {
+    if (selectedGenus) {
+      setActiveGenusFilters([selectedGenus]);
+    }
+  }, [selectedGenus]);
+
+    useEffect(() => {
+        if (activeGenusFilters.length > 0) {
+            const filtered = species.filter((s) =>
+            activeGenusFilters.includes(s.genus)
+            );
+            setFilteredSpecies(filtered);
+        } else {
+            setFilteredSpecies(species);
+        }
+    }, [activeGenusFilters, species]);
+
+
+  // -------- Fetch species --------
   const fetchSpecies = async () => {
     setLoading(true);
 
@@ -33,6 +46,7 @@ const SpeciesTab = () => {
     if (cached) {
       const parsed = JSON.parse(cached);
       setSpecies(parsed.data);
+      setFilteredSpecies(parsed.data);
       setStatusFilters(parsed.statusFilters);
       setGenusFilters(parsed.genusFilters);
       setLoading(false);
@@ -54,7 +68,6 @@ const SpeciesTab = () => {
         );
 
         const json = await res.json();
-
         allResults = allResults.concat(json.results || []);
         endOfRecords = json.endOfRecords;
         offset += PAGE_LIMIT;
@@ -68,24 +81,22 @@ const SpeciesTab = () => {
         publishedIn: r.publishedIn,
       }));
 
-      // Build dynamic status filters
       const uniqueStatuses = Array.from(
         new Set(mapped.map((r) => r.taxonomicStatus).filter(Boolean))
       ).sort();
 
-      const statusFilterItems = uniqueStatuses.map((status) => ({
-        text: status,
-        value: status,
-      }));
-
-      // Build dynamic genus filters
       const uniqueGenera = Array.from(
         new Set(mapped.map((r) => r.genus).filter(Boolean))
       ).sort();
 
-      const genusFilterItems = uniqueGenera.map((genus) => ({
-        text: genus,
-        value: genus,
+      const statusFilterItems = uniqueStatuses.map((s) => ({
+        text: s,
+        value: s,
+      }));
+
+      const genusFilterItems = uniqueGenera.map((g) => ({
+        text: g,
+        value: g,
       }));
 
       sessionStorage.setItem(
@@ -98,6 +109,7 @@ const SpeciesTab = () => {
       );
 
       setSpecies(mapped);
+      setFilteredSpecies(mapped);
       setStatusFilters(statusFilterItems);
       setGenusFilters(genusFilterItems);
     } catch (err) {
@@ -107,6 +119,32 @@ const SpeciesTab = () => {
     }
   };
 
+  // -------- Table change handler --------
+  const handleTableChange = (pagination, filters, sorter, extra) => {
+    setFilteredSpecies(extra.currentDataSource);
+
+    if (filters.genus && filters.genus.length > 0) {
+      setActiveGenusFilters(filters.genus);
+    } else {
+      setActiveGenusFilters([]);
+    }
+  };
+
+  // -------- Summary (always reflects table state) --------
+  const summarySource =
+    filteredSpecies.length > 0 ? filteredSpecies : species;
+
+  const totalSpecies = summarySource.length;
+
+  const acceptedSpecies = summarySource.filter(
+    (s) => s.taxonomicStatus === "ACCEPTED"
+  ).length;
+
+  const uniqueGeneraCount = new Set(
+    summarySource.map((s) => s.genus).filter(Boolean)
+  ).size;
+
+  // -------- Columns --------
   const columns = [
     {
       title: "GBIF Key",
@@ -128,6 +166,8 @@ const SpeciesTab = () => {
       dataIndex: "genus",
       key: "genus",
       filters: genusFilters,
+      filteredValue:
+        activeGenusFilters.length > 0 ? activeGenusFilters : null,
       onFilter: (value, record) => record.genus === value,
       sorter: (a, b) => (a.genus || "").localeCompare(b.genus || ""),
       width: 180,
@@ -157,19 +197,27 @@ const SpeciesTab = () => {
 
   return (
     <>
-        <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 12 }}>
         <Tag color="blue">Data source: GBIF</Tag>
         <div style={{ marginTop: 4, color: "#666" }}>
-            <div>Number of genera: {uniqueGeneraCount}</div>
-            <div>Number of species: {totalSpecies}</div>
-            <div>Number of accepted species: {acceptedSpecies}</div>
+          <div>Number of genera: {uniqueGeneraCount}</div>
+          <div>Number of species: {totalSpecies}</div>
+          <div>Number of accepted species: {acceptedSpecies}</div>
         </div>
+      </div>
+
+      {activeGenusFilters.length > 0 && (
+        <div style={{ marginBottom: 8, color: "#666" }}>
+          Filtered to genus:{" "}
+          <strong>{activeGenusFilters.join(", ")}</strong>
         </div>
+      )}
 
       <Table
         columns={columns}
         dataSource={species}
         rowKey="key"
+        onChange={handleTableChange}
         pagination={{
           pageSize: 100,
           showSizeChanger: false,

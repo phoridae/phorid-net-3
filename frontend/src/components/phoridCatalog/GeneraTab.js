@@ -3,34 +3,27 @@ import { Table, Spin, Tag } from "antd";
 import { LinkOutlined } from "@ant-design/icons";
 
 const GBIF_FAMILY_KEY = 9502; // Phoridae
+const CACHE_KEY = "gbif_phoridae_genera";
 
-const STATUS_FILTERS = [
-  { text: "Accepted", value: "ACCEPTED" },
-  { text: "Doubtful", value: "DOUBTFUL" },
-];
-
-const CACHE_KEY = "gbif_genera";
-
-const GeneraTab = () => {
+const GeneraTab = ({ onSelectGenus }) => {
   const [loading, setLoading] = useState(false);
   const [genera, setGenera] = useState([]);
-
-  const totalGenera = genera.length;
-  const acceptedGenera = genera.filter(
-    (g) => g.taxonomicStatus === "ACCEPTED"
-  ).length;
+  const [filteredGenera, setFilteredGenera] = useState([]);
+  const [statusFilters, setStatusFilters] = useState([]);
 
   useEffect(() => {
     fetchGenera();
   }, []);
 
-  // Session cache: cleared when browser/tab closes
   const fetchGenera = async () => {
     setLoading(true);
 
     const cached = sessionStorage.getItem(CACHE_KEY);
     if (cached) {
-      setGenera(JSON.parse(cached));
+      const parsed = JSON.parse(cached);
+      setGenera(parsed.data);
+      setFilteredGenera(parsed.data); // IMPORTANT
+      setStatusFilters(parsed.statusFilters);
       setLoading(false);
       return;
     }
@@ -41,7 +34,7 @@ const GeneraTab = () => {
       );
       const json = await res.json();
 
-      const filtered = (json.results || [])
+      const mapped = (json.results || [])
         .filter((r) => r.rank === "GENUS")
         .map((r) => ({
           key: r.key,
@@ -51,14 +44,46 @@ const GeneraTab = () => {
           publishedIn: r.publishedIn,
         }));
 
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify(filtered));
-      setGenera(filtered);
+      const uniqueStatuses = Array.from(
+        new Set(mapped.map((g) => g.taxonomicStatus).filter(Boolean))
+      ).sort();
+
+      const statusFilterItems = uniqueStatuses.map((status) => ({
+        text: status,
+        value: status,
+      }));
+
+      sessionStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          data: mapped,
+          statusFilters: statusFilterItems,
+        })
+      );
+
+      setGenera(mapped);
+      setFilteredGenera(mapped);
+      setStatusFilters(statusFilterItems);
     } catch (err) {
       console.error("Failed to fetch genera from GBIF", err);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleTableChange = (pagination, filters, sorter, extra) => {
+    setFilteredGenera(extra.currentDataSource);
+  };
+
+  // ---- SUMMARY (derived from filtered view) ----
+  const summarySource =
+    filteredGenera.length > 0 ? filteredGenera : genera;
+
+  const totalGenera = summarySource.length;
+
+  const acceptedGenera = summarySource.filter(
+    (g) => g.taxonomicStatus === "ACCEPTED"
+  ).length;
 
   const columns = [
     {
@@ -80,6 +105,8 @@ const GeneraTab = () => {
       title: "Genus",
       dataIndex: "genus",
       key: "genus",
+      sorter: (a, b) => (a.genus || "").localeCompare(b.genus || ""),
+      width: 180,
     },
     {
       title: "Scientific Name",
@@ -90,7 +117,7 @@ const GeneraTab = () => {
       title: "Status",
       dataIndex: "taxonomicStatus",
       key: "taxonomicStatus",
-      filters: STATUS_FILTERS,
+      filters: statusFilters,
       onFilter: (value, record) => record.taxonomicStatus === value,
       width: 160,
     },
@@ -100,6 +127,19 @@ const GeneraTab = () => {
       key: "publishedIn",
       ellipsis: true,
     },
+    {
+        title: "Species",
+        key: "species",
+        width: 140,
+        render: (_, record) => (
+            <a
+                onClick={() => onSelectGenus(record.genus)}
+                style={{ cursor: "pointer" }}
+            >
+            View species →
+            </a>
+        ),
+        }
   ];
 
   if (loading) return <Spin />;
@@ -109,8 +149,8 @@ const GeneraTab = () => {
       <div style={{ marginBottom: 12 }}>
         <Tag color="blue">Data source: GBIF</Tag>
         <div style={{ marginTop: 4, color: "#666" }}>
-            <div>Number of genera: {totalGenera}</div>
-            <div>Number of accepted genera: {acceptedGenera}</div>
+          <div>Number of genera: {totalGenera}</div>
+          <div>Number of accepted genera: {acceptedGenera}</div>
         </div>
       </div>
 
@@ -118,6 +158,7 @@ const GeneraTab = () => {
         columns={columns}
         dataSource={genera}
         rowKey="key"
+        onChange={handleTableChange}
         pagination={{
           pageSize: 50,
           showSizeChanger: false,

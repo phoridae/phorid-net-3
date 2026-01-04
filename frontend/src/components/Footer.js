@@ -25,7 +25,7 @@ const Footer = () => {
       {/* Bottom bar */}
       <div className="footer-bottom">
         <div className="footer-text">
-          © 2025 <strong>phorid.net</strong>
+          © 2026 <strong>phorid.net</strong>
         </div>
 
         <div className="social-links">
