@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button, Select, Tag, Spin, Table, Progress } from "antd";
+import { LinkOutlined } from "@ant-design/icons";
+
 
 const { Option } = Select;
 const MAX_SPECIMENS = 10000;
@@ -440,6 +442,9 @@ const SpecimensPage = () => {
           taxonKey: r.taxonKey,
           institutionCode: r.institutionCode,
           species: r.scientificName,
+          epithet:
+            r.specificEpithet ||
+            (r.scientificName ? r.scientificName.split(" ").slice(1, 2)[0] : null),
           country: r.country,
           eventDate: r.eventDate,
           locality: r.locality,
@@ -463,38 +468,61 @@ const SpecimensPage = () => {
 
   const canProcess = tested && count !== null;
 
+  const epithetFilters = useMemo(() => {
+    return Array.from(
+      new Set(
+        records
+          .map((r) => r.epithet)
+          .filter((e) => typeof e === "string" && e.trim() !== "")
+          .map((e) => e.toLowerCase())
+      )
+    )
+      .sort()
+      .map((e) => ({
+        text: e,
+        value: e,
+      }));
+  }, [records]);
+
   /* ---------- TABLE COLUMNS ---------- */
   const columns = [
     {
       title: "GBIF ID",
       dataIndex: "gbifId",
-      width: 120,
+      width: 140,
       render: (v) => (
         <a
           href={`https://www.gbif.org/occurrence/${v}`}
           target="_blank"
           rel="noopener noreferrer"
         >
-          {v}
+          {v} <LinkOutlined />
         </a>
       ),
     },
     { title: "Taxon Key", dataIndex: "taxonKey", width: 120 },
     { title: "Institution", dataIndex: "institutionCode", width: 120 },
+    { title: "Species", dataIndex: "species", width: 120 },
+
     {
-      title: "Species",
-      dataIndex: "species",
-      key: "species",
+      title: "Specific Epithet",
+      dataIndex: "epithet",
+      key: "epithet",
       width: 220,
+
       sorter: (a, b) =>
-        (a.species || "").localeCompare(b.species || ""),
-      filters: Array.from(
-        new Set(records.map((r) => r.species).filter(Boolean))
-      )
-        .sort()
-        .map((s) => ({ text: s, value: s })),
-      onFilter: (value, record) => record.species === value,
+        (a.epithet || "").localeCompare(b.epithet || "", undefined, {
+          sensitivity: "base",
+        }),
+
+      filters: epithetFilters,
+
+      onFilter: (value, record) =>
+        (record.epithet || "").toLowerCase() === value,
+
+      render: (v) => v || <span style={{ color: "#999" }}>—</span>,
     },
+
 
     { title: "Country", dataIndex: "country", width: 120 },
     { title: "Event Date", dataIndex: "eventDate", width: 160 },
@@ -525,6 +553,13 @@ const SpecimensPage = () => {
             placeholder="Genus"
             style={{ width: 180 }}
             allowClear
+            showSearch
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              option.children
+                .toLowerCase()
+                .includes(input.toLowerCase())
+            }
             onChange={(v) => setFilters((f) => ({ ...f, genus: v }))}
           >
             {GENERA.map((g) => (
@@ -533,11 +568,11 @@ const SpecimensPage = () => {
               </Option>
             ))}
           </Select>
-
           <Select
             placeholder="Institution"
             style={{ width: 200 }}
             allowClear
+            showSearch
             onChange={(v) => setFilters((f) => ({ ...f, institution: v }))}
           >
             {INSTITUTIONS.map((i) => (
