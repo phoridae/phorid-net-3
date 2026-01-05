@@ -439,7 +439,7 @@ const SpecimensPage = () => {
           gbifId: r.key,
           taxonKey: r.taxonKey,
           institutionCode: r.institutionCode,
-          species: r.species,
+          species: r.scientificName,
           country: r.country,
           eventDate: r.eventDate,
           locality: r.locality,
@@ -481,7 +481,21 @@ const SpecimensPage = () => {
     },
     { title: "Taxon Key", dataIndex: "taxonKey", width: 120 },
     { title: "Institution", dataIndex: "institutionCode", width: 120 },
-    { title: "Species", dataIndex: "species", width: 220 },
+    {
+      title: "Species",
+      dataIndex: "species",
+      key: "species",
+      width: 220,
+      sorter: (a, b) =>
+        (a.species || "").localeCompare(b.species || ""),
+      filters: Array.from(
+        new Set(records.map((r) => r.species).filter(Boolean))
+      )
+        .sort()
+        .map((s) => ({ text: s, value: s })),
+      onFilter: (value, record) => record.species === value,
+    },
+
     { title: "Country", dataIndex: "country", width: 120 },
     { title: "Event Date", dataIndex: "eventDate", width: 160 },
     { title: "Locality", dataIndex: "locality", ellipsis: true },
