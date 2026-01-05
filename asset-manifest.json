@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/phorid-net-3/static/css/main.2cae7c9c.css",
-    "main.js": "/phorid-net-3/static/js/main.51dfe4ae.js",
+    "main.js": "/phorid-net-3/static/js/main.4bdf9741.js",
     "static/js/453.a351d9a0.chunk.js": "/phorid-net-3/static/js/453.a351d9a0.chunk.js",
     "static/media/myriophora_feeding.mp4": "/phorid-net-3/static/media/myriophora_feeding.5b5b7238eb2cbeca13c1.mp4",
     "static/media/LACM_ENT_068159_longa_habitus.png": "/phorid-net-3/static/media/LACM_ENT_068159_longa_habitus.9ad1e4fbba6e5042ed71.png",
@@ -36,11 +36,11 @@
     "static/media/phoridNewsletters.png": "/phorid-net-3/static/media/phoridNewsletters.be2155fed69fe65341bf.png",
     "index.html": "/phorid-net-3/index.html",
     "main.2cae7c9c.css.map": "/phorid-net-3/static/css/main.2cae7c9c.css.map",
-    "main.51dfe4ae.js.map": "/phorid-net-3/static/js/main.51dfe4ae.js.map",
+    "main.4bdf9741.js.map": "/phorid-net-3/static/js/main.4bdf9741.js.map",
     "453.a351d9a0.chunk.js.map": "/phorid-net-3/static/js/453.a351d9a0.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.2cae7c9c.css",
-    "static/js/main.51dfe4ae.js"
+    "static/js/main.4bdf9741.js"
   ]
 }
