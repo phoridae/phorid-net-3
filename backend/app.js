@@ -20,6 +20,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use("/flies", require("./routes/flies"));
+app.use("/api/dropbox", require("./routes/dropbox"));
 
 // Errors
 app.use((req, res) => {

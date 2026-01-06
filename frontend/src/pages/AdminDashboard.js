@@ -32,7 +32,11 @@ const AdminDashboard = () => {
           </Col>
 
           <Col xs={24} sm={12} md={12} lg={6}>
-            <Card hoverable title="Literature">
+            <Card 
+              hoverable 
+              title="Literature"
+              onClick={() => navigate("/phoridae/literature")}
+            >
               Manage PDFs, references, and extracted metadata.
             </Card>
           </Col>
