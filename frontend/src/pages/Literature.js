@@ -39,9 +39,9 @@ export default function Literature() {
       title: "Action",
       key: "action",
       render: (_, record) => (
-        <Button onClick={() => openPdf(record.id)}>
-          Open PDF
-        </Button>
+        <a onClick={() => openPdf(record.id)}>
+          Download PDF
+        </a>
       ),
     },
   ];
