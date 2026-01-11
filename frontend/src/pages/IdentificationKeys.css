@@ -1,21 +1,3 @@
-.jumbotron {
-    width: 100%;
-    position: relative;
-}
-  
-.jumbotron img {
-  width: 100%;
-  height: auto;
-}
-  
-  .jumbotron h1 {
-    position: absolute;
-    top: 50%;
-    left: 15%;
-    transform: translateY(-50%);
-    color: white;
-}
-  
 .content p {
     text-align: center;
     padding: 20px;
@@ -83,4 +65,40 @@
   color: #000; /* Change text color if needed */
 }
 
+.key-instructions {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0 24px;
+}
+
+.instructions-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background-color: #e6f4ff;
+  color: #0958d9;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid #91caff;
+  transition: background-color 0.2s ease;
+}
+
+.instructions-badge:hover {
+  background-color: #bae0ff;
+}
+
+.instructions-popover {
+  max-width: 320px;
+}
+
+.instructions-popover ol {
+  padding-left: 18px;
+  margin-bottom: 8px;
+}
+
+.instructions-popover li {
+  margin-bottom: 6px;
+}
 

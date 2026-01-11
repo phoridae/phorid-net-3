@@ -9,11 +9,18 @@ const Footer = () => {
       
       {/* Top navigation links */}
       <nav className="footer-links">
+        <a
+          href="https://phorid.net/pcat"
+          className="nav-link"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          PCAT
+        </a>
+        <Link to="/phoridae/photo-gallery">Gallery</Link>
+        <Link to="/phoridae/identification-keys">Keys</Link>
+        <Link to="/phoridae/more-resources">Projects</Link>
         <Link to="/phoridae/people">People</Link>
-        <Link to="/phoridae/projects">Projects</Link>
-        <Link to="/phoridae/photoGallery">Gallery</Link>
-        <Link to="/phoridae/identificationKeys">Keys</Link>
-        <Link to="/phoridae/pcat">Catalog</Link>
         <Link to="phoridae/about">About</Link>
       </nav>
 

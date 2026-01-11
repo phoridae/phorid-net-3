@@ -42,7 +42,7 @@ const AdminDashboard = () => {
           </Col>
 
           <Col xs={24} sm={12} md={12} lg={6}>
-            <Card hoverable title="PCAT">
+            <Card hoverable title="Research Databases">
               Phorid Catalog tools and taxonomic data management.
             </Card>
           </Col>

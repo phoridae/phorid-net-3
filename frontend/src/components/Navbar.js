@@ -25,20 +25,25 @@ function Navbar() {
       </div>
 
       <div className="navbar-center">
-        <NavLink to="/phoridae/people" className="nav-link">
-          People
-        </NavLink>
-        <NavLink to="/phoridae/projects" className="nav-link">
-          Projects
-        </NavLink>
-        <NavLink to="/phoridae/photoGallery" className="nav-link">
+        <a
+          href="https://phorid.net/pcat"
+          className="nav-link"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          PCAT
+        </a>
+        <NavLink to="/phoridae/photo-gallery" className="nav-link">
           Gallery
         </NavLink>
-        <NavLink to="/phoridae/identificationKeys" className="nav-link">
+        <NavLink to="/phoridae/identification-keys" className="nav-link">
            Keys
         </NavLink>
-        <NavLink to="/phoridae/pcat" className="nav-link">
-          Catalog
+        <NavLink to="/phoridae/more-resources" className="nav-link">
+          Projects
+        </NavLink>
+        <NavLink to="/phoridae/people" className="nav-link">
+          People
         </NavLink>
         <NavLink to="/phoridae/about" className="nav-link">
           About

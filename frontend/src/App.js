@@ -21,8 +21,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Crisis from './pages/Crisis';
 import About from './pages/About';
 import People from './pages/People';
-import Pcat from './pages/PhoridCatalogPublic';
+import GbifViewer from './pages/PhoridCatalogPublic';
 import Literature from './pages/Literature';
+import MoreResources from './pages/ProjectsAndNews';
 
 
 // Use hash on GitHub Pages; browser locally
@@ -46,18 +47,19 @@ export default function App() {
             }
           />
           <Route path="/phoridae/newsletters" element={<PhoridNewsletters />} />
-          <Route path="/phoridae/identificationKeys" element={<IdentificationKeys />} />
+          <Route path="/phoridae/identification-keys" element={<IdentificationKeys />} />
           <Route path="/phoridae/morphometrics" element={
             <ProtectedRoute>
               <Morphometrics />
             </ProtectedRoute>
             } 
           />
-          <Route path="/phoridae/photoGallery" element={<PhotoGallery />} />
+          <Route path="/phoridae/photo-gallery" element={<PhotoGallery />} />
           <Route path="/phoridae/crisis" element={<Crisis />} />
           <Route path="/phoridae/about" element={<About />} />
           <Route path="/phoridae/people" element={<People />} />
-          <Route path="/phoridae/pcat" element={<Pcat />} />
+          <Route path="/phoridae/gbif-viewer" element={<GbifViewer />} />
+          <Route path="/phoridae/more-resources" element={<MoreResources />} />
           <Route path="/phoridae/literature" element={
             <ProtectedRoute>
               <Literature />

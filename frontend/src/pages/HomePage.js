@@ -8,47 +8,45 @@ import { Link } from 'react-router-dom';
 import '../App.css';
 import HeroIntro from '../components/HeroIntro';
 
-import automatex  from '../assets/images/automatex.png';
+import automatex  from '../assets/images/automatex1.png';
 import pcat from '../assets/images/pcat.png';
-import bioscan from '../assets/images/bioscan-dummy.png'
-import photoGallery from '../assets/images/photoGallery.png';
+import photoGallery from '../assets/images/photoGallery1.png';
 import myrioImage from '../assets/images/Myriophora_lucigaster.png';
-import phoridNewsletters from '../assets/images/phoridNewsletters.png';
+import phoridNewsletters from '../assets/images/phoridNewsletters1.png';
 import keys from '../assets/images/keys.png';
-import crisis from '../assets/images/crisis-dummy.png'
 import melaImage from '../assets/images/melaloncha_annicae.png';
 import apoImage from '../assets/images/apo_wallaceorum_lateral.jpg';
 import dohrImage from '../assets/images/Dohrniphora_apharea.jpg';
 import megaImage from '../assets/images/megaselia_mithridates.png';
 import mLongaImage from '../assets/images/LACM_ENT_068159_longa_habitus.png';
 import coniceroImage from '../assets/images/Coniceromyia.jpg'
-
+import moreImage from '../assets/images/more_resources.png';
 import phorid1 from '../assets/images/megaselia_mithridates.png';
-// import phorid2 from '../assets/images/apo_wallaceorum_lateral.jpg';
-import phorid3 from '../assets/images/Dohrniphora_apharea.jpg';
 import lifeHistPhoto from '../assets/images/apocephalus_on_ponerine.png';
 import distribution from '../assets/images/gbif_distribution.png';
+import gbifViewer from '../assets/images/gbif_viewer.png';
+import vestigipoda from '../assets/images/vestigipoda.png';
 
 
 const { Paragraph, Title } = Typography;
 const resources = [
   {
-    title: 'Phorid Catalog',
+    title: 'LACM Phorid Catalog',
     img: pcat,
     external: true,
-    href: '/phoridae/pcat',
+    href: 'https://phorid.net/pcat',
   },
   {
     title: 'Photo Gallery',
     img: photoGallery,
     internal: true,
-    to: '/phoridae/photoGallery',
+    to: '/phoridae/photo-gallery',
   },
   {
-    title: 'BioSCAN',
-    img: bioscan,
+    title: 'Phorid Flies on GBIF',
+    img: gbifViewer,
     internal: true,
-    to: '/phoridae/bioscan',
+    to: '/phoridae/gbif-viewer',
   },
   {
     title: 'Phorid Newsletters',
@@ -60,19 +58,19 @@ const resources = [
     title: 'Identification Keys',
     img: keys,
     internal: true,
-    to: '/phoridae/identificationKeys',
+    to: '/phoridae/identification-keys',
   },
   {
     title: 'Automated Material Examined',
     img: automatex,
     external: true,
-    href: 'http://example.com/page2',
+    href: 'https://phorid.net/automatex/index.php',
   },
   {
-    title: 'Crisis in Neotropical Dipterology',
-    img: crisis,
+    title: 'More Projects and News',
+    img: moreImage,
     internal: true,
-    to: '/phoridae/crisis',
+    to: '/phoridae/more-resources',
   },
 ];  // this this grows beyond three smaller rows on the right, let's make the last row have a more link to a resources page
 
@@ -110,7 +108,7 @@ const HomePage = () => {
           </Col>
           <Col xs={24} md={12} style={{ display: "flex", alignItems: "center" }}>
             <img
-              src={phorid1}
+              src={vestigipoda}
               alt="Phorid fly"
               style={{
                 width: "100%",

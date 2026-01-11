@@ -1,9 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import './IdentificationKeys.css';
 import { fetchCharacterData, fetchTaxonData } from '../utils/api';
-import { Button, Popover, Col, Row, Carousel } from 'antd';
-import mainImage from '../assets/images/taxonomy-girl-at-microscope.png';
+import { Button, Popover, Col, Row, Carousel, Typography } from 'antd';
 import fallbackHabitus from '../assets/images/melaloncha_face_illustration.png'; // fallback if remote missing
+import { InfoCircleOutlined } from '@ant-design/icons';
+const { Title } = Typography;
+
+
 
 const pretty = (s) => s.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
 
@@ -186,26 +189,46 @@ const IdentificationKeys = () => {
   };
 
   return (
-    <div>
-      <div className="jumbotron">
-        <img src={mainImage} alt="Identification Keys" />
-        <h1>Identification Keys</h1>
-      </div>
+    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      <Title level={2} style={{ marginBottom: 32 }}>
+        Identification Keys
+      </Title>
 
       <div className="content">
-        <p>
-        <strong>1.</strong> Select a genus.
-        <br />
-        <strong>2.</strong> Toggle the characters.
-        <br />
-        <strong>3.</strong> Compare photos and descriptions of up to three taxa.
-      </p>
+        <div className="key-instructions">
+          <Popover
+            placement="bottom"
+            trigger={["hover", "click"]}
+            content={
+              <div className="instructions-popover">
+                <ol>
+                  <li><strong>Select a genus</strong> to load available diagnostic characters.</li>
+                  <li><strong>Toggle character states</strong> to progressively filter matching taxa.</li>
+                  <li>
+                    <strong>Select up to three taxa</strong> to compare images, diagnoses, and character
+                    states side-by-side.
+                  </li>
+                </ol>
+                <p style={{ fontSize: 12, opacity: 0.8 }}>
+                  This is a <strong>multi-entry identification key</strong> — characters can be used in any
+                  order, and “All” may be selected if a character is unknown or damaged.
+                </p>
+              </div>
+            }
+          >
+            <span className="instructions-badge">
+              <InfoCircleOutlined />
+              Learn how to use this identification key
+            </span>
+          </Popover>
+        </div>
+
 
 
         <div className="button-container">
-          <button onClick={() => handleButtonClick('Myriophora')}>Myriophora</button>
-          <button onClick={() => handleButtonClick('Pseudomyriophora')}>Pseudomyriophora</button>
-          <button onClick={() => handleButtonClick('Oreophilophora')}>Oreophilophora</button>
+          <Button color="cyan" variant="solid" onClick={() => handleButtonClick('Myriophora')}>Myriophora</Button>
+          <Button color="cyan" variant="solid" onClick={() => handleButtonClick('Pseudomyriophora')}>Pseudomyriophora</Button>
+          <Button color="cyan" variant="solid" onClick={() => handleButtonClick('Oreophilophora')}>Oreophilophora</Button>
         </div>
 
         <div className="data-columns">
@@ -255,7 +278,7 @@ const IdentificationKeys = () => {
           <ul>
             {filteredTaxonData.map(taxon => (
               <li key={taxon.id}>
-                <Button type="primary" onClick={() => handleTaxonClick(taxon.id)}>
+                <Button variant="dashed" onClick={() => handleTaxonClick(taxon.id)}>
                   {taxon.specific_epithet}
                 </Button>
               </li>

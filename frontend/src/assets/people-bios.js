@@ -1,7 +1,7 @@
 const peopleBios = [
   {
     id: "brown",
-    name: "Brian V. Brown",
+    name: "Brian V Brown",
     title: "Curator of Entomology",
     affiliation: "Natural History Museum of Los Angeles County",
     bio: `
