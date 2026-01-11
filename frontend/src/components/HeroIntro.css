@@ -36,33 +36,45 @@
   justify-content: center;
   align-items: center;
   text-align: center;
+  pointer-events: none;
 }
 
 /* Primary text */
 .hero-title {
   font-size: 48px;
-  color: black;
+  color: #111;
   opacity: 0;
   animation: fadeIn 2s ease-out forwards;
+  transition: color 1.2s ease;
 }
 
 /* Secondary text */
 .hero-subtitle {
   margin-top: 12px;
   font-size: 28px;
-  color: #3b3b3b;
+  color: #444;
   opacity: 0;
   animation: fadeInTopToBottom 3s ease-out forwards;
   animation-delay: 0.5s;
+  transition: color 1.2s ease;
 }
 
-/* Animations (reuse yours) */
+/* Light text state (when video is visible) */
+.hero-title.light {
+  color: #ffffff;
+}
+
+.hero-subtitle.light {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
   }
   to {
-    opacity: 0.85;
+    opacity: 0.9;
   }
 }
 

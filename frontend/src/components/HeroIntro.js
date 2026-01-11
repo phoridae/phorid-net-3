@@ -4,14 +4,23 @@ import myrioFeeding from "../assets/images/myriophora_feeding.mp4";
 
 const HeroIntro = () => {
   const [showVideo, setShowVideo] = useState(false);
+  const [lightText, setLightText] = useState(false);
 
   useEffect(() => {
-    // Delay before video fades in
-    const timer = setTimeout(() => {
+    // When the video fades in
+    const videoTimer = setTimeout(() => {
       setShowVideo(true);
-    }, 2500); // adjust timing as desired
+    }, 2500);
 
-    return () => clearTimeout(timer);
+    // Slightly after video begins fading, switch text to white
+    const textTimer = setTimeout(() => {
+      setLightText(true);
+    }, 3000);
+
+    return () => {
+      clearTimeout(videoTimer);
+      clearTimeout(textTimer);
+    };
   }, []);
 
   return (
@@ -28,8 +37,10 @@ const HeroIntro = () => {
 
       {/* OVERLAY TEXT */}
       <div className="hero-overlay">
-        <div className="hero-title">Welcome to phorid.net</div>
-        <div className="hero-subtitle">
+        <div className={`hero-title ${lightText ? "light" : ""}`}>
+          Welcome to phorid.net
+        </div>
+        <div className={`hero-subtitle ${lightText ? "light" : ""}`}>
           Dedicated to the most diverse family of insects
         </div>
       </div>

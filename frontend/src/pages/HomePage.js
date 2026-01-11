@@ -24,8 +24,10 @@ import mLongaImage from '../assets/images/LACM_ENT_068159_longa_habitus.png';
 import coniceroImage from '../assets/images/Coniceromyia.jpg'
 
 import phorid1 from '../assets/images/megaselia_mithridates.png';
-import phorid2 from '../assets/images/apo_wallaceorum_lateral.jpg';
+// import phorid2 from '../assets/images/apo_wallaceorum_lateral.jpg';
 import phorid3 from '../assets/images/Dohrniphora_apharea.jpg';
+import lifeHistPhoto from '../assets/images/apocephalus_on_ponerine.png';
+import distribution from '../assets/images/gbif_distribution.png';
 
 
 const { Paragraph, Title } = Typography;
@@ -86,11 +88,14 @@ const gbifTaxa = [
 
 const HomePage = () => {
   return (
-    <div className="App" style={{ padding: '24px' }}>
+    <div className="App" style={{ padding: '16px 24px' }}>
       <HeroIntro />  
 
       {/* Phoridae intro section */}
-      <div style={{ padding: '48px 24px', maxWidth: 1100, margin: '0 auto' }}>
+      <div
+        className="homepage-intro"
+        style={{ padding: '32px 24px', maxWidth: 1100, margin: '0 auto' }}
+      >
 
         {/* Row 1: Text – Image */}
         <Row gutter={[32, 32]} align="middle">
@@ -103,34 +108,52 @@ const HomePage = () => {
               world’s smallest fly.
             </Paragraph>
           </Col>
-          <Col xs={24} md={12}>
-            <img src={phorid1} alt="Phorid fly" style={{ width: '100%', borderRadius: 6 }} />
+          <Col xs={24} md={12} style={{ display: "flex", alignItems: "center" }}>
+            <img
+              src={phorid1}
+              alt="Phorid fly"
+              style={{
+                width: "100%",
+                maxHeight: 220,
+                objectFit: "contain",
+                borderRadius: 6,
+              }}
+            />
           </Col>
         </Row>
 
         {/* Row 2: Image – Text */}
         <Row gutter={[32, 32]} align="middle" style={{ marginTop: 48 }}>
-          <Col xs={24} md={12}>
-            <img src={phorid2} alt="Phorid diversity" style={{ width: '100%', borderRadius: 6 }} />
-          </Col>
-          <Col xs={24} md={12}>
-            <Title level={3}>Life histories</Title>
-            <Paragraph>
-              Phorid life histories are classified mostly by the way the larva feeds. These include
-              scavengers, plant feeders, fungus feeders, predators, parasitoids, and true parasites.
-              Most phorid flies studied so far are parasitoids, often laying eggs in ants, bees,
-              or millipedes.
-            </Paragraph>
-            <Paragraph>
-              The vast majority of phorids, however, have never been studied, and their life
-              histories remain completely unknown.
-            </Paragraph>
+              <Col xs={24} md={12}>
+                <Title level={3}>Life histories</Title>
+                <Paragraph>
+                  Phorid life histories are classified mostly by the way the larva feeds. These include
+                  scavengers, plant feeders, fungus feeders, predators, parasitoids, and true parasites.
+                  Most phorid flies studied so far are parasitoids, often laying eggs in ants, bees,
+                  or millipedes.
+                </Paragraph>
+                <Paragraph>
+                  The vast majority of phorids, however, have never been studied, and their life
+                  histories remain completely unknown.
+                </Paragraph>
+              </Col>
+          <Col xs={24} md={12} style={{ display: "flex", alignItems: "center" }}>
+            <img
+              src={lifeHistPhoto}
+              alt="Phorid fly"
+              style={{
+                width: "100%",
+                maxHeight: 220,
+                objectFit: "contain",
+                borderRadius: 6,
+              }}
+            />
           </Col>
         </Row>
 
         {/* Row 3: Text – Image */}
         <Row gutter={[32, 32]} align="middle" style={{ marginTop: 48 }}>
-          <Col xs={24} md={12}>
+          <Col xs={24} md={12} >
             <Title level={3}>Global diversity</Title>
             <Paragraph>
               Phorids occur worldwide, from Arctic tundra to tropical rainforests, grasslands,
@@ -143,8 +166,17 @@ const HomePage = () => {
               and molecular studies indicate that many more species remain undiscovered.
             </Paragraph>
           </Col>
-          <Col xs={24} md={12}>
-            <img src={phorid3} alt="Phorid genera" style={{ width: '100%', borderRadius: 6 }} />
+          <Col xs={24} md={12} style={{ display: "flex", alignItems: "center" }}>
+            <img
+              src={distribution}
+              alt="Phorid fly"
+              style={{
+                width: "100%",
+                maxHeight: 220,
+                objectFit: "contain",
+                borderRadius: 6,
+              }}
+            />
           </Col>
         </Row>
       </div>
@@ -236,7 +268,7 @@ const HomePage = () => {
 
 
       {/* Featured Taxa */}
-      <h2 className="SectionHeader" style={{ marginTop: 40 }}>
+      <h2 className="SectionHeader" style={{ marginTop: 24 }}>
         Featured Taxa
       </h2>
 
@@ -334,17 +366,17 @@ const HomePage = () => {
       })()}
 
       
-      <h2 className="SectionHeader" style={{ marginTop: 40 }}>
+      <h2 className="SectionHeader" style={{ marginTop: 24 }}>
         Links We Love
       </h2>
       <div
         style={{
           backgroundColor: "#f6f6f6",
           minHeight: "auto",
-          paddingTop: 48,
+          paddingTop: 24,
           paddingLeft: 24,
           paddingRight: 24,
-          paddingBottom: 0,
+          paddingBottom: 24,
         }}
       >
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
