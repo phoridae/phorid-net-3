@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/phorid-net-3/static/css/main.4dcfd95d.css",
-    "main.js": "/phorid-net-3/static/js/main.25585820.js",
+    "main.css": "/phorid-net-3/static/css/main.36ccb472.css",
+    "main.js": "/phorid-net-3/static/js/main.a85c0f06.js",
     "static/js/453.a351d9a0.chunk.js": "/phorid-net-3/static/js/453.a351d9a0.chunk.js",
     "static/media/myriophora_feeding.mp4": "/phorid-net-3/static/media/myriophora_feeding.5b5b7238eb2cbeca13c1.mp4",
     "static/media/LACM_ENT_068159_longa_habitus.png": "/phorid-net-3/static/media/LACM_ENT_068159_longa_habitus.9ad1e4fbba6e5042ed71.png",
@@ -37,12 +37,12 @@
     "static/media/Coniceromyia.jpg": "/phorid-net-3/static/media/Coniceromyia.587964a397361f5c358d.jpg",
     "static/media/keys.png": "/phorid-net-3/static/media/keys.2b22463d20845fb287b1.png",
     "index.html": "/phorid-net-3/index.html",
-    "main.4dcfd95d.css.map": "/phorid-net-3/static/css/main.4dcfd95d.css.map",
-    "main.25585820.js.map": "/phorid-net-3/static/js/main.25585820.js.map",
+    "main.36ccb472.css.map": "/phorid-net-3/static/css/main.36ccb472.css.map",
+    "main.a85c0f06.js.map": "/phorid-net-3/static/js/main.a85c0f06.js.map",
     "453.a351d9a0.chunk.js.map": "/phorid-net-3/static/js/453.a351d9a0.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.4dcfd95d.css",
-    "static/js/main.25585820.js"
+    "static/css/main.36ccb472.css",
+    "static/js/main.a85c0f06.js"
   ]
 }
