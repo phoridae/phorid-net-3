@@ -1,0 +1,24 @@
+.projectsWrapper {
+  margin-left: 5%;
+  margin-right: 5%;
+  margin-bottom: 5%;
+}
+
+.listWrapper {
+  width: 50%;
+  margin: left;
+  padding: 20px;
+  background-color: #f1efef;
+  border-radius: 8px;
+}
+
+/* Divider between items */
+.ant-list .ant-list-item {
+  border-bottom: 3px solid #ccc;
+}
+
+/* Title styling (matches newsletter links) */
+.ant-list-item-meta-title > a {
+  font-size: 24px;
+  color: #333;
+}
