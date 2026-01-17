@@ -52,6 +52,16 @@ const AdminDashboard = () => {
               Describe specimens and generate descriptions.
             </Card>
           </Col>
+
+          <Col xs={24} sm={12} md={12} lg={6}>
+            <Card 
+              hoverable 
+              title="Amino Acid Translator"
+              onClick={() => navigate("/phoridae/amino-acid-translator")}
+            >
+              Simple, quick amino acid translator.
+            </Card>
+          </Col>
         </Row>
       </div>
       <div>

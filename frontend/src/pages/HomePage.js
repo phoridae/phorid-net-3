@@ -449,6 +449,32 @@ const HomePage = () => {
                 </Card>
               </a>
             </Col>
+            {/* Systema Dipterorum */}
+            <Col xs={24} sm={12} md={12} lg={6}>
+              <a
+                href="http://www.diptera.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none" }}
+              >
+                <Card hoverable title="Systema Dipterorum">
+                  The biosystematic database of world Diptera
+                </Card>
+              </a>
+            </Col>
+            {/* iNaturalist */}
+            <Col xs={24} sm={12} md={12} lg={6}>
+              <a
+                href="https://www.inaturalist.org/taxa/55351-Phoridae"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none" }}
+              >
+                <Card hoverable title="iNaturalist">
+                  See community observations of phorid flies on iNaturalist
+                </Card>
+              </a>
+            </Col>
 
           </Row>
         </div>

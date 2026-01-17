@@ -1,0 +1,14 @@
+.amino-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.frame-output {
+  margin: 8px 0 20px;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  font-family: monospace;
+  white-space: pre-wrap;
+}

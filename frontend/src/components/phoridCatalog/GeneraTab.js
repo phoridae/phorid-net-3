@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Table, Spin, Tag } from "antd";
 import { LinkOutlined } from "@ant-design/icons";
-
-const GBIF_FAMILY_KEY = 9502; // Phoridae
-const CACHE_KEY = "gbif_phoridae_genera";
+import generaData from "../../data/generaListDetails.json";
 
 const GeneraTab = ({ onSelectGenus }) => {
   const [loading, setLoading] = useState(false);
@@ -12,37 +10,23 @@ const GeneraTab = ({ onSelectGenus }) => {
   const [statusFilters, setStatusFilters] = useState([]);
 
   useEffect(() => {
-    fetchGenera();
+    loadGenera();
   }, []);
 
-  const fetchGenera = async () => {
+  const loadGenera = () => {
     setLoading(true);
 
-    const cached = sessionStorage.getItem(CACHE_KEY);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      setGenera(parsed.data);
-      setFilteredGenera(parsed.data); // IMPORTANT
-      setStatusFilters(parsed.statusFilters);
-      setLoading(false);
-      return;
-    }
-
     try {
-      const res = await fetch(
-        `https://api.gbif.org/v1/species/${GBIF_FAMILY_KEY}/children?limit=450`
-      );
-      const json = await res.json();
-
-      const mapped = (json.results || [])
+      const mapped = (generaData.Genera || [])
         .filter((r) => r.rank === "GENUS")
         .map((r) => ({
           key: r.key,
           genus: r.genus,
-          scientificName: r.scientificName,
+          authorship: r.authorship,
           taxonomicStatus: r.taxonomicStatus,
           publishedIn: r.publishedIn,
         }));
+
 
       const uniqueStatuses = Array.from(
         new Set(mapped.map((g) => g.taxonomicStatus).filter(Boolean))
@@ -53,29 +37,21 @@ const GeneraTab = ({ onSelectGenus }) => {
         value: status,
       }));
 
-      sessionStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({
-          data: mapped,
-          statusFilters: statusFilterItems,
-        })
-      );
-
       setGenera(mapped);
       setFilteredGenera(mapped);
       setStatusFilters(statusFilterItems);
     } catch (err) {
-      console.error("Failed to fetch genera from GBIF", err);
+      console.error("Failed to load genera JSON", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTableChange = (pagination, filters, sorter, extra) => {
+  const handleTableChange = (_, __, ___, extra) => {
     setFilteredGenera(extra.currentDataSource);
   };
 
-  // ---- SUMMARY (derived from filtered view) ----
+  /* ---------- SUMMARY (derived from filtered view) ---------- */
   const summarySource =
     filteredGenera.length > 0 ? filteredGenera : genera;
 
@@ -89,7 +65,6 @@ const GeneraTab = ({ onSelectGenus }) => {
     {
       title: "GBIF Key",
       dataIndex: "key",
-      key: "key",
       width: 140,
       render: (value) => (
         <a
@@ -104,19 +79,17 @@ const GeneraTab = ({ onSelectGenus }) => {
     {
       title: "Genus",
       dataIndex: "genus",
-      key: "genus",
       sorter: (a, b) => (a.genus || "").localeCompare(b.genus || ""),
       width: 180,
     },
     {
-      title: "Scientific Name",
-      dataIndex: "scientificName",
-      key: "scientificName",
+      title: "Author / Year",
+      dataIndex: "authorship",
+      key: "authorship",
     },
     {
       title: "Status",
       dataIndex: "taxonomicStatus",
-      key: "taxonomicStatus",
       filters: statusFilters,
       onFilter: (value, record) => record.taxonomicStatus === value,
       width: 160,
@@ -124,22 +97,21 @@ const GeneraTab = ({ onSelectGenus }) => {
     {
       title: "Published In",
       dataIndex: "publishedIn",
-      key: "publishedIn",
       ellipsis: true,
     },
     {
-        title: "Species",
-        key: "species",
-        width: 140,
-        render: (_, record) => (
-            <a
-                onClick={() => onSelectGenus(record.genus)}
-                style={{ cursor: "pointer" }}
-            >
-            View species →
-            </a>
-        ),
-        }
+      title: "Species",
+      key: "species",
+      width: 140,
+      render: (_, record) => (
+        <a
+          onClick={() => onSelectGenus(record.genus)}
+          style={{ cursor: "pointer" }}
+        >
+          View species →
+        </a>
+      ),
+    },
   ];
 
   if (loading) return <Spin />;

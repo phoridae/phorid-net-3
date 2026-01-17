@@ -24,6 +24,7 @@ import People from './pages/People';
 import GbifViewer from './pages/PhoridCatalogPublic';
 import Literature from './pages/Literature';
 import MoreResources from './pages/ProjectsAndNews';
+import AminoAcid from './pages/AminoAcidTranslate';
 
 
 // Use hash on GitHub Pages; browser locally
@@ -63,6 +64,12 @@ export default function App() {
           <Route path="/phoridae/literature" element={
             <ProtectedRoute>
               <Literature />
+            </ProtectedRoute>
+            } 
+          />
+          <Route path="/phoridae/amino-acid-translator" element={
+            <ProtectedRoute>
+              <AminoAcid />
             </ProtectedRoute>
             } 
           />

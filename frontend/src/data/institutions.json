@@ -1,0 +1,32 @@
+{
+  "institutions": [
+    {
+      "code": "LACM",
+      "name": "Natural History Museum of Los Angeles County"
+    },
+    {
+      "code": "INBio",
+      "name": "Instituto Nacional de Biodiversidad (Costa Rica)"
+    },
+    {
+      "code": "NMNHUK",
+      "name": "Natural History Museum, London"
+    },
+    {
+      "code": "AMNH",
+      "name": "American Museum of Natural History"
+    },
+    {
+      "code": "NMSA",
+      "name": "National Museum of South Africa"
+    },
+    {
+      "code": "UCONN",
+      "name": "University of Connecticut"
+    },
+    {
+      "code": "Centre for Biodiversity Genomics",
+      "name": "Centre for Biodiversity Genomics"
+    }
+  ]
+}
