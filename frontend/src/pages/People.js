@@ -3,13 +3,13 @@ import { Typography, Divider } from "antd";
 import CarouselSmall from "../components/CarouselSmall";
 import people from "../assets/people-bios";
 
-
 const { Title, Paragraph, Link } = Typography;
 
 function People() {
   const [selected, setSelected] = useState(people[0]);
 
   const carouselItems = people.map((p) => ({
+    key: p.id || p.name, // <-- pick a stable unique id if you have one
     src: p.image,
     alt: p.name,
     text: p.name,
@@ -20,25 +20,21 @@ function People() {
     <div style={{ padding: "48px 24px", maxWidth: 1100, margin: "0 auto" }}>
       <Title level={2}>People</Title>
 
-      {/* === PERSON SELECTOR === */}
       <CarouselSmall
         items={carouselItems}
-        slidesToShow={4}
+        slidesToShow={6}
+        selectedKey={selected?.id || selected?.name}
         onSelect={(item) => setSelected(item.person)}
       />
 
       <Divider />
 
-      {/* === PERSON DETAILS === */}
       {selected && (
         <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>
           <img
             src={selected.image}
             alt={selected.name}
-            style={{
-              width: 200,
-              borderRadius: 4,
-            }}
+            style={{ width: 200, borderRadius: 4 }}
           />
 
           <div>
@@ -50,9 +46,7 @@ function People() {
               <strong>{selected.title}</strong>
             </Paragraph>
 
-            <Paragraph type="secondary">
-              {selected.affiliation}
-            </Paragraph>
+            <Paragraph type="secondary">{selected.affiliation}</Paragraph>
 
             <Paragraph>{selected.bio}</Paragraph>
 
@@ -62,6 +56,7 @@ function People() {
                   key={link.url}
                   href={link.url}
                   target="_blank"
+                  rel="noreferrer"
                   style={{ marginRight: 16 }}
                 >
                   {link.label}

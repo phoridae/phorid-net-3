@@ -1,194 +1,122 @@
-/* CarouselSmall.css */
+/* CarouselSmall.css
+   - Arrows visible + slides don't sit under them (gutters)
+   - Dots visible below carousel
+   - Selected outline visible all around (NOT clipped)
+   - Prevent top edge from cutting slide content
+*/
 
 .carousel-small-container {
-    width: 100vw; /* Full viewport width */
-    position: relative;
-    left: 50%;
-    right: 50%;
-    margin-left: -50vw; /* Center the container to take full viewport width */
-    margin-right: -50vw;
-    overflow: hidden; /* Hide anything overflowing the viewport */
-    border-radius: 20px; /* Rounded corners for the entire carousel */
-    /* transform: translateX(20%); Move the entire carousel to the right */
+  width: 100%;
+  margin: 0 0 44px 0;        /* extra space under for dots */
+  position: relative;
+  overflow: visible;         /* allow dots to show if positioned outside */
 }
 
-.full-width-carousel-small .slick-slide {
-    padding-left: 3vw; /* Smaller padding on the left */
-    padding-right: 0.5vw; /* Smaller padding on the right */
-    box-sizing: border-box;
-
+/* Reserve enough height so dots can sit below without overlapping page content */
+.carousel-small {
+  position: relative;
 }
 
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-prev, :where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-next {
-    cursor: e-resize;
-    color: rgb(54, 52, 52)
+/* Create left/right gutters for arrows + add top/bottom padding so slides don't clip */
+.carousel-small :where(.slick-list) {
+  padding: 10px 44px 12px 44px !important; /* top/right/bottom/left */
+  /* NOTE: slick-list is overflow hidden by default; that’s fine now because
+     our selected ring is drawn INSIDE the image (inset) */
+}
+
+/* Small spacing between tiles */
+.carousel-small :where(.slick-slide) {
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+
+/* Slide button */
+.carousel-small-slide {
+  position: relative;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 10px; /* helps when we add inset highlight */
 }
 
 .carousel-small-slide img {
-    width: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease-in-out;
-    border-radius: 20px; /* Rounded corners for the entire carousel */
-    color: white;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
 }
 
-.carousel-small-slide video {
-    width: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease-in-out;
-    border-radius: 20px; /* Rounded corners for the entire carousel */
-    color: white;
-}
-
-/* Ensure the slide itself has a relative position */
-.carousel-small-slide {
-    position: relative;
-    width: 100%; /* This ensures the slide takes up full width of its container */
-    padding: 0; /* Optional: remove padding if unnecessary */
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes fadeInTopToBottom {
-    from {
-        opacity: 0;
-        transform: translateY(-20px); /* Start above the final position */
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.carousel-text, .carousel-text-two {
-    position: absolute;
-    left: 50%; /* Center horizontally */
-    transform: translateX(-50%); /* Center the element to its own width */
-    padding: 10px 20px;
-    border-radius: 10px;
-    z-index: 10; /* Above the image */
-}
-
-
-
-.carousel-text-two {
-    left: 27.5%;
-    top: 40%; /* Positioning for the secondary text */
-    font-size: 28px; /* Smaller font size for secondary text */
-    animation: fadeInTopToBottom 4.5s ease-out forwards; /* Apply the fade-in effect */
-    opacity: 0; /* Start from invisible */
-    color: #3b3b3b; /* Text color */
-
-}
-
-.carousel-button {
-    position: absolute;
-    left: 27.5%;
-    top: 40%; /* Positioning for the secondary text */
-    font-size: 36px; /* Smaller font size for secondary text */
-    color: #3b3b3b; /* Text color */
-    z-index: 10;
-    display: flex; /* Use flexbox to layout buttons */
-    gap: 5px; /* Space between buttons */
-    justify-content: center; /* Center buttons horizontally */
-    align-items: center; /* Align buttons vertically */
-}
-
-/* Position text at bottom left of the image with slight bottom padding */
+/* Name label */
 .carousel-small-text {
-    position: absolute;
-    bottom: 10px; /* Bottom padding */
-    left: 0;
-    padding: 5px 10px; /* Padding inside the text box */
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-    color: white; /* Text color */
-    font-size: 16px; /* Adjust font size as needed */
-    width: auto; /* Adjust based on content size or set a specific width */
-    z-index: 10; /* Above the image */
-}
-
-#bottomCarousel {
-    margin-bottom: 25px;
-}
-
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel{
-    margin-bottom: 25px;
-}
-
-.carousel-small-slide.active {
-  outline: 2px solid #1890ff;
-}
-
-/* Strong, visible navigation arrows */
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-prev,
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-next {
-  width: 44px;
-  height: 44px;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 50%;
-  z-index: 20;
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-/* Arrow icons */
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-prev::before,
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-next::before {
-  font-size: 20px;
-  color: white;
-  opacity: 1;
-}
-
-/* Positioning */
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-prev {
-  left: 16px;
-}
-
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-next {
-  right: 16px;
-}
-
-/* Hover feedback */
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-prev:hover,
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-next:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-/* Carousel dots container */
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-dots {
-  bottom: -24px;
-}
-
-/* Inactive dots */
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-dots li button {
-  width: 18px;
-  height: 4px;
-  background: #b0b0b0;
-  opacity: 0.7;
-  border-radius: 4px;
-}
-
-/* Active dot */
-:where(.css-dev-only-do-not-override-1x0dypw).ant-carousel .slick-dots li.slick-active button {
-  background: #1890ff;
-  opacity: 1;
-}
-
-.carousel-small-container::after {
-  content: "⇆ Drag or use arrows";
   position: absolute;
-  bottom: -28px;
-  right: 16px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
   font-size: 12px;
-  color: #666;
+  line-height: 1.2;
 }
 
+/* Selected (visible ALL around, never clipped):
+   Draw the "ring" INSIDE the image using inset box-shadow. */
+.carousel-small-slide.active img {
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35);
+}
+
+/* Keyboard focus (also inset so it won't clip) */
+.carousel-small-slide:focus-visible img {
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.45);
+}
+
+/* ===== Arrows: visible but not bubble circles ===== */
+.carousel-small :where(.slick-prev),
+.carousel-small :where(.slick-next) {
+  width: 34px;
+  height: 34px;
+  z-index: 5;
+  opacity: 1 !important;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+
+.carousel-small :where(.slick-prev) { left: 10px; }
+.carousel-small :where(.slick-next) { right: 10px; }
+
+/* Default slick arrow glyph, boosted for contrast */
+.carousel-small :where(.slick-prev)::before,
+.carousel-small :where(.slick-next)::before {
+  font-size: 26px;
+  line-height: 34px;
+  opacity: 1 !important;
+  color: rgba(0, 0, 0, 0.75);
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+/* ===== Dots: force them to sit BELOW the slides and be visible ===== */
+.carousel-small :where(.slick-dots) {
+  bottom: -28px;             /* place below the carousel */
+}
+
+.carousel-small :where(.slick-dots li) {
+  margin: 0 6px;
+}
+
+.carousel-small :where(.slick-dots li button) {
+  width: 22px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 1;
+}
+
+.carousel-small :where(.slick-dots li.slick-active button) {
+  background: rgba(0, 0, 0, 0.85);
+}

@@ -227,8 +227,27 @@ const IdentificationKeys = () => {
 
         <div className="button-container">
           <Button color="cyan" variant="solid" onClick={() => handleButtonClick('Myriophora')}>Myriophora</Button>
-          <Button color="cyan" variant="solid" onClick={() => handleButtonClick('Pseudomyriophora')}>Pseudomyriophora</Button>
-          <Button color="cyan" variant="solid" onClick={() => handleButtonClick('Oreophilophora')}>Oreophilophora</Button>
+
+          {process.env.NODE_ENV === 'development' && (
+            <>
+              <Button
+                color="cyan"
+                variant="solid"
+                onClick={() => handleButtonClick('Pseudomyriophora')}
+              >
+                Pseudomyriophora
+              </Button>
+
+              <Button
+                color="cyan"
+                variant="solid"
+                onClick={() => handleButtonClick('Oreophilophora')}
+              >
+                Oreophilophora
+              </Button>
+            </>
+          )}
+
         </div>
 
         <div className="data-columns">

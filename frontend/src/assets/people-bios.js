@@ -83,6 +83,34 @@ integration, and public-facing resources on Phoridae.
       { label: "Google Scholar", url: "https://scholar.google.com/citations?hl=en&user=L3eJEPwAAAAJ&view_op=list_works&sortby=pubdate"}
     ],
   },
+    {
+    id: "p1",
+    name: "Person 1",
+    title: "Project Developer & Research Collaborator",
+    affiliation: "Phorid.net",
+    bio: `
+      Person 2 is a person.
+    `.trim(),
+    image: `${process.env.PUBLIC_URL}/images/people/melaloncha_face_illustration.png`,
+    links: [
+      { label: "Website", url: "https://www.johnhash.me" },
+      { label: "Google Scholar", url: "https://scholar.google.com/citations?hl=en&user=L3eJEPwAAAAJ&view_op=list_works&sortby=pubdate"}
+    ],
+  },
+    {
+    id: "p2",
+    name: "Person 2",
+    title: "Project Developer & Research Collaborator",
+    affiliation: "Phorid.net",
+    bio: `
+      Person 2 is a person.
+    `.trim(),
+    image: `${process.env.PUBLIC_URL}/images/people/melaloncha_face_illustration.png`,
+    links: [
+      { label: "Website", url: "https://www.johnhash.me" },
+      { label: "Google Scholar", url: "https://scholar.google.com/citations?hl=en&user=L3eJEPwAAAAJ&view_op=list_works&sortby=pubdate"}
+    ],
+  },
 ];
 
 export default peopleBios;

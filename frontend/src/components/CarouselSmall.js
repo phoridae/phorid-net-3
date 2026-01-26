@@ -5,43 +5,43 @@ import "./CarouselSmall.css";
 const CarouselSmall = ({
   items,
   infinite = false,
-  slidesToShow = 4,
+  slidesToShow = 6,
   draggable = true,
   autoplay = false,
-  onSelect,           
+  onSelect,
+  selectedKey, // <-- NEW: lets us highlight active person
 }) => {
   return (
     <div className="carousel-small-container">
       <Carousel
         dots
+        arrows
         infinite={infinite}
-        slidesToShow={slidesToShow}
-        slidesToScroll={1}
-        className="full-width-carousel-small"
         draggable={draggable}
         autoplay={autoplay}
-        arrows
+        slidesToShow={slidesToShow}
+        slidesToScroll={1}
+        className="carousel-small"
       >
-        {items.map((item, index) => (
-          <div
-            className="carousel-small-slide"
-            key={`slide-${index}`}
-            onClick={() => onSelect?.(item)} 
-            role="button"
-            tabIndex={0}
-          >
-            <img src={item.src} alt={item.alt} />
-            {item.text && (
-              <div className="carousel-small-text">
-                {item.text}
-              </div>
-            )}
-          </div>
-        ))}
+        {items.map((item, index) => {
+          const active = selectedKey && item.key === selectedKey;
+
+          return (
+            <div key={item.key ?? `slide-${index}`}>
+              <button
+                type="button"
+                className={`carousel-small-slide ${active ? "active" : ""}`}
+                onClick={() => onSelect?.(item)}
+              >
+                <img src={item.src} alt={item.alt} />
+                {item.text && <div className="carousel-small-text">{item.text}</div>}
+              </button>
+            </div>
+          );
+        })}
       </Carousel>
     </div>
   );
 };
 
 export default CarouselSmall;
-
