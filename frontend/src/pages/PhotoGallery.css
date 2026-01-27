@@ -1,3 +1,11 @@
+/* PhotoGallery.css - drop-in
+   Updates:
+   - Force each carousel slide to be a fixed tile height
+   - Make AntD <Image> fill the tile and crop with object-fit: cover
+   - Keep click-to-zoom cursor
+   - Caption won’t block clicks on the image
+*/
+
 .grid-wrapper {
   display: flex;
   justify-content: center; /* centers the inner grid */
@@ -7,30 +15,54 @@
 }
 
 .grid-wrapper .ant-row {
-  max-width: 1400px;  /* or whatever fits 5 columns comfortably */
+  max-width: 1400px; /* or whatever fits 5 columns comfortably */
   width: 100%;
 }
-
 
 .carousel-card {
   position: relative;
   overflow: hidden;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #fff;
 }
 
+/* Force every slide to be the same height tile */
+.carousel-card .slick-slide > div {
+  height: 200px;
+}
+
+/* Ensure AntD Image wrapper fills the slide */
+.carousel-card .ant-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Make the actual <img> fill the tile and crop if needed */
+.carousel-card .ant-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 8px;
+  cursor: zoom-in;
+}
+
+/* Keep your existing class in case you still reference it somewhere */
 .carousel-image {
   width: 100%;
   height: 200px;
   object-fit: cover;
   border-radius: 8px;
+  cursor: zoom-in;
 }
 
 .carousel-caption {
   position: absolute;
   bottom: 0;
   width: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   color: white;
   text-align: center;
   padding: 6px 0;
@@ -38,4 +70,7 @@
   font-weight: bold;
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
+
+  /* Important: don't block clicking the image for the AntD viewer */
+  pointer-events: none;
 }

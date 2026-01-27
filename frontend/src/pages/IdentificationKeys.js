@@ -144,7 +144,7 @@ const IdentificationKeys = () => {
         <div>
           <h2>{taxon.specific_epithet}</h2>
 
-          <Carousel draggable>
+          <Carousel draggable arrows dots>
             <div>
               {/* Use CDN filename from taxon.habitus_image */}
               <TaxonHabitusImage

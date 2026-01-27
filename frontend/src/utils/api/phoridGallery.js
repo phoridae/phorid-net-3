@@ -11,42 +11,48 @@ export async function fetchPhotoGallery() {
 const photoGalleryData = [
   {
     "genus": "Abaristophora",
+    "tags": [],
     "images": [
       "https://phorid.net/uploads_genera/Abaristophora-lateral.jpg"
     ]
   },
   {
     "genus": "Acanthophorides",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Acanthophorides-lateral.jpg"
     ]
   },
   {
     "genus": "Achaetophora",
+    "tags": [],
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Acontistoptera",
+    "tags": ["brachypterous"],
     "images": [
       "https://phorid.net/uploads_genera/Acontistoptera-lateral.jpg"
     ]
   },
   {
     "genus": "Adelopteromyia",
+    "tags": [],
     "images": [
       "https://phorid.net/uploads_genera/Adelopteromyia-lateral.jpg"
     ]
   },
   {
     "genus": "Adenophora",
+    "tags": ["apterous"],
     "images": [
       "https://phorid.net/uploads_genera/Adenophora-lateral.jpg"
     ]
   },
   {
     "genus": "Aemulophora",
+    "tags": ["brachypterous"],
     "images": [
       "https://phorid.net/uploads_genera/Aemulophora-lateral.jpg"
     ]
@@ -54,23 +60,21 @@ const photoGalleryData = [
   {
     "genus": "Aenictacantha",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Aenictomyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Aenigmaphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Aenigmatias",
+    "tags": ["apterous"],
     "images": [
       "https://phorid.net/uploads_genera/Aenigmatias-lateral.jpg"
     ]
@@ -78,13 +82,11 @@ const photoGalleryData = [
   {
     "genus": "Aenigmatistes",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Aenigmatopoeus",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -102,29 +104,30 @@ const photoGalleryData = [
   {
     "genus": "Anticofimbria",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Aphiura",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Apocephalus",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Apocephalus-lateral.jpg"
     ]
   },
   {
     "genus": "Apodicrania",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Apodicrania-lateral.jpg"
     ]
   },
   {
     "genus": "Apterella",
+    "tags": ["apterous"],
     "images": [
       "https://phorid.net/uploads_genera/Apterella-lateral.jpg"
     ]
@@ -138,13 +141,11 @@ const photoGalleryData = [
   {
     "genus": "Aptinandria",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Arabiphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -156,19 +157,16 @@ const photoGalleryData = [
   {
     "genus": "Aristocerina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Arrenaptenus",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Assmutherium",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -186,19 +184,16 @@ const photoGalleryData = [
   {
     "genus": "Beyermyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Billotia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Bolsiusia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -216,7 +211,6 @@ const photoGalleryData = [
   {
     "genus": "Bothroprosopa",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -228,19 +222,16 @@ const photoGalleryData = [
   {
     "genus": "Brachycosta",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Brachyphlebina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Brachyselia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -252,7 +243,6 @@ const photoGalleryData = [
   {
     "genus": "Burmophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -264,7 +254,6 @@ const photoGalleryData = [
   {
     "genus": "Caledophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -276,19 +265,16 @@ const photoGalleryData = [
   {
     "genus": "Ceratoconus",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Ceratophoromyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Ceratoplatus",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -300,7 +286,6 @@ const photoGalleryData = [
   {
     "genus": "Ceylonoxenia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -318,25 +303,21 @@ const photoGalleryData = [
   {
     "genus": "Chaetogodavaria",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Chaetopleurophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Cheiloxenia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Chelidophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -348,25 +329,21 @@ const photoGalleryData = [
   {
     "genus": "Clinochaeta",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Clitelloxenia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Colobomeles",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Colyeria",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -390,11 +367,11 @@ const photoGalleryData = [
   {
     "genus": "Contopteryx",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Cootiphora",
+    "tags": ["apterous", "brachypterous"],
     "images": [
       "https://phorid.net/uploads_genera/Cootiphora-lateral.jpg"
     ]
@@ -402,13 +379,11 @@ const photoGalleryData = [
   {
     "genus": "Corynusa",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Crasilla",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -419,6 +394,7 @@ const photoGalleryData = [
   },
   {
     "genus": "Cryptophora",
+    "tags": ["apterous"],
     "images": [
       "https://phorid.net/uploads_genera/Cryptophora-lateral.jpg"
     ]
@@ -426,7 +402,6 @@ const photoGalleryData = [
   {
     "genus": "Ctenopleuriphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -438,17 +413,16 @@ const photoGalleryData = [
   {
     "genus": "Cyphometopis",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Cyrtophorina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Dacnophora",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Dacnophora-lateral.jpg"
     ]
@@ -468,31 +442,26 @@ const photoGalleryData = [
   {
     "genus": "Darwiniphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Diaclinella",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Dichocerina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Dicranodeina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Dicranopteron",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -503,6 +472,7 @@ const photoGalleryData = [
   },
   {
     "genus": "Diocophora",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Diocophora-lateral.jpg"
     ]
@@ -516,19 +486,16 @@ const photoGalleryData = [
   {
     "genus": "Diplostylocera",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Distichophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Dohrnigma",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -540,53 +507,52 @@ const photoGalleryData = [
   {
     "genus": "Dorsochaeta",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Dundophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Echidnophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Ecitomyia",
+    "tags": ["brachypterous"],
     "images": [
       "https://phorid.net/uploads_genera/Ecitomyia-lateral.jpg"
     ]
   },
   {
     "genus": "Ecitophora",
+    "tags": ["brachypterous"],
     "images": [
       "https://phorid.net/uploads_genera/Ecitophora-lateral.jpg"
     ]
   },
   {
     "genus": "Ecitoptera",
+    "tags": ["brachypterous"],
     "images": [
       "https://phorid.net/uploads_genera/Ecitoptera-lateral.jpg"
     ]
   },
   {
     "genus": "Ecituncula",
+    "tags": ["apterous"],
     "images": [
       "https://phorid.net/uploads_genera/Ecituncula-lateral.jpg"
     ]
@@ -594,17 +560,16 @@ const photoGalleryData = [
   {
     "genus": "Ectochaeta",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Egregiophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Eibesfeldtphora",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Eibesfeldtphora-lateral.jpg"
     ]
@@ -618,13 +583,11 @@ const photoGalleryData = [
   {
     "genus": "Epacteon",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Epactoselia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -642,7 +605,6 @@ const photoGalleryData = [
   {
     "genus": "Erinacephora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -654,37 +616,31 @@ const photoGalleryData = [
   {
     "genus": "Euryphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Euryplatea",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Eutermiphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Exochaeta",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Franssenia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Godavaria",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -696,37 +652,31 @@ const photoGalleryData = [
   {
     "genus": "Gymnoptera",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Haplophleba",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Haulepta",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Hexacantherophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Hippaphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Hirotophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -738,19 +688,16 @@ const photoGalleryData = [
   {
     "genus": "Homalophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Horologiphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Hylophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -768,37 +715,31 @@ const photoGalleryData = [
   {
     "genus": "Hypogeophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Idiophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Imparphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Iranphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Iridophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Javanoxenia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -810,13 +751,11 @@ const photoGalleryData = [
   {
     "genus": "Kierania",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Kuenburgia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -827,6 +766,7 @@ const photoGalleryData = [
   },
   {
     "genus": "Laishania",
+    "tags": ["apterous"],
     "images": [
       "https://phorid.net/uploads_genera/Laishania-lateral.jpg"
     ]
@@ -834,7 +774,6 @@ const photoGalleryData = [
   {
     "genus": "Laosphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -852,25 +791,21 @@ const photoGalleryData = [
   {
     "genus": "Lenkoa",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Lepta",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Leptilla",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Linklloydia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -882,7 +817,6 @@ const photoGalleryData = [
   {
     "genus": "Lucianaphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -900,41 +834,36 @@ const photoGalleryData = [
   {
     "genus": "Macrocerophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Macroselia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Maculiphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Mahabadphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Mallochphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Mannheimsia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Megapropodiphora",
+    "tags": ["brachypterous"],
     "images": [
       "https://phorid.net/uploads_genera/Megapropodiphora-lateral.jpg"
     ]
@@ -947,6 +876,7 @@ const photoGalleryData = [
   },
   {
     "genus": "Melaloncha",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Melaloncha-lateral.jpg"
     ]
@@ -972,61 +902,55 @@ const photoGalleryData = [
   {
     "genus": "Metopina-gp",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Miclepta",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Microplatyphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Microselia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Minicosta",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Misotermes",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Morahania",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Myopiomyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Myriophora",
+    "tags": ["parasitoid"],
     "images": [
-      "https://phorid.net/uploads_genera/Myriophora-lateral.jpg"
+      "https://phorid.net/uploads_genera/Myriophora-lateral.jpg",
+      "https://johnhash.me/images/M_pectinata_habitus.png",
+      "https://johnhash.me/images/M_alexandrae_habitus.png"
     ]
   },
   {
     "genus": "Myrmomyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -1038,11 +962,11 @@ const photoGalleryData = [
   {
     "genus": "Necperissa",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Neodohrniphora",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Neodohrniphora-lateral.jpg"
     ]
@@ -1062,65 +986,56 @@ const photoGalleryData = [
   {
     "genus": "Obscurcaudaphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Obscuriphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Odontoxenia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Oligophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Pachyneurella",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Palpiclavina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Palpocrates",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Paraphiura",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Parasyneura",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Paratermitoxenia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Paurophora",
+    "tags": ["apterous"],
     "images": [
       "https://phorid.net/uploads_genera/Paurophora-lateral.jpg"
     ]
@@ -1128,41 +1043,36 @@ const photoGalleryData = [
   {
     "genus": "Pelidnophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Penthaplus",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Pericyclocerina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Perissa",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Perittophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Peromitra",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Phalacrotophora",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Phalacrotophora-lateral.jpg"
     ]
@@ -1170,13 +1080,11 @@ const photoGalleryData = [
   {
     "genus": "Pheidolomyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Phlebothrix",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -1194,25 +1102,21 @@ const photoGalleryData = [
   {
     "genus": "Physoptera",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Pilosaphiura",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Placophorina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Plastophorides",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -1224,47 +1128,41 @@ const photoGalleryData = [
   {
     "genus": "Plectanocnema",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Plethysmochaeta",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Poloniphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Postoptica",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Pradea",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Procliniella",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Pronudiphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Pseudacteon",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Pseudacteon-lateral.jpg"
     ]
@@ -1277,6 +1175,7 @@ const photoGalleryData = [
   },
   {
     "genus": "Pseudomyriophora",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Pseudomyriophora-lateral.jpg"
     ]
@@ -1284,29 +1183,26 @@ const photoGalleryData = [
   {
     "genus": "Pseudoplastophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Pseudotermitoxenia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Psyllomyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Ptochomyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Puliciphora",
+    "tags": ["apterous"],
     "images": [
       "https://phorid.net/uploads_genera/Puliciphora-lateral.jpg"
     ]
@@ -1314,29 +1210,26 @@ const photoGalleryData = [
   {
     "genus": "Razorfemora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Rhabdomyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Rhopica",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Rhynchomicropteron",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Rhyncophoromyia",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Rhyncophoromyia-lateral.jpg"
     ]
@@ -1344,19 +1237,16 @@ const photoGalleryData = [
   {
     "genus": "Ridiculiphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Ritchiephora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Sacculiphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -1368,67 +1258,56 @@ const photoGalleryData = [
   {
     "genus": "Selenophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Septemineophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Siluphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Sinogodavaria",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Sorowoodiphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Sphinctomyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Spiniphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Stenodicrania",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Stenoneurellys",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Stenophorina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Stethopathusa",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -1439,12 +1318,14 @@ const photoGalleryData = [
   },
   {
     "genus": "Styletta",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Styletta-lateral.jpg"
     ]
   },
   {
     "genus": "Synclinusa",
+    "tags": ["parasitoid"],
     "images": [
       "https://phorid.net/uploads_genera/Synclinusa-lateral.jpg"
     ]
@@ -1458,19 +1339,16 @@ const photoGalleryData = [
   {
     "genus": "Syneurina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Syntermitoxenia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Syntermophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -1488,73 +1366,61 @@ const photoGalleryData = [
   {
     "genus": "Tarsocrates",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Tayrona",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Tendcornphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Termitomyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Termitophilomyia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Termitophorides",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Termitophorina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Termitosagma",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Termitoscrofa",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Termitosphaera",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Termitostroma",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Termitoxenia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -1566,17 +1432,16 @@ const photoGalleryData = [
   {
     "genus": "Thaumatoxena",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Tonnoirina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Tranopeltoxenos",
+    "tags": ["apterous"],
     "images": [
       "https://phorid.net/uploads_genera/Tranopeltoxenos-lateral.jpg"
     ]
@@ -1590,7 +1455,6 @@ const photoGalleryData = [
   {
     "genus": "Trichocerina",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -1608,7 +1472,6 @@ const photoGalleryData = [
   {
     "genus": "Trispiniphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -1626,47 +1489,41 @@ const photoGalleryData = [
   {
     "genus": "Tropophleba",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Trucidophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Tubicera",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Tubiceroides",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Tubicerphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Veranophora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Veruanus",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Vestigipoda",
+    "tags": ["apterous"],
     "images": [
       "https://phorid.net/uploads_genera/Vestigipoda-lateral.jpg"
     ]
@@ -1674,19 +1531,16 @@ const photoGalleryData = [
   {
     "genus": "Volvectiphora",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Wandolleckia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
     "genus": "Wharia",
     "images": [
-      "https://phorid.net/uploads_genera/"
     ]
   },
   {
@@ -1698,7 +1552,7 @@ const photoGalleryData = [
   {
     "genus": "Woodiphorides",
     "images": [
-      "https://phorid.net/uploads_genera/"
+      
     ]
   }
 ]
