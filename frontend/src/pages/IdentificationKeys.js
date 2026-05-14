@@ -1,12 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import './IdentificationKeys.css';
 import { fetchCharacterData, fetchTaxonData } from '../utils/api';
-import { Button, Popover, Col, Row, Carousel, Typography } from 'antd';
+import { Button, Popover, Col, Row, Carousel, Typography, Image } from 'antd';
 import fallbackHabitus from '../assets/images/melaloncha_face_illustration.png'; // fallback if remote missing
 import { InfoCircleOutlined } from '@ant-design/icons';
 const { Title } = Typography;
-
-
 
 const pretty = (s) => s.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
 
@@ -60,18 +58,29 @@ const CharacterStatePreview = ({ genus, characterKey, option, maxWidth = 260 }) 
   );
 };
 
-/** NEW: Habitus image loader from your CDN with graceful fallback */
-const TaxonHabitusImage = ({ filename, alt }) => {
+const TaxonImage = ({ filename, alt }) => {
   const [src, setSrc] = useState(
     filename ? `https://johnhash.me/images/${encodeURIComponent(filename)}` : fallbackHabitus
   );
+
   return (
-    <img
-      src={src}
-      alt={alt}
-      style={{ width: '100%', height: 'auto', display: 'block' }}
-      onError={() => setSrc(fallbackHabitus)}
-    />
+    <div className="taxon-carousel-image-frame">
+      <img
+        src={src}
+        alt=""
+        className="taxon-carousel-image-bg"
+        aria-hidden="true"
+      />
+
+      <Image
+        src={src}
+        alt={alt}
+        className="taxon-carousel-image"
+        fallback={fallbackHabitus}
+        preview={{ mask: "View enlarged" }}
+        onError={() => setSrc(fallbackHabitus)}
+      />
+    </div>
   );
 };
 
@@ -143,29 +152,29 @@ const IdentificationKeys = () => {
       <Col span={8} key={taxonId}>
         <div>
           <h2>{taxon.specific_epithet}</h2>
-
-          <Carousel draggable arrows dots>
-            <div>
-              {/* Use CDN filename from taxon.habitus_image */}
-              <TaxonHabitusImage
-                filename={taxon.habitus_image}
-                alt={`${taxon.genus} ${taxon.specific_epithet} – habitus`}
-              />
-            </div>
-            {/* Duplicate slides for now; later you can add terminalia images, etc. */}
-            <div>
-              <TaxonHabitusImage
-                filename={taxon.habitus_image}
-                alt={`${taxon.genus} ${taxon.specific_epithet} – habitus`}
-              />
-            </div>
-            <div>
-              <TaxonHabitusImage
-                filename={taxon.habitus_image}
-                alt={`${taxon.genus} ${taxon.specific_epithet} – habitus`}
-              />
-            </div>
-          </Carousel>
+          
+            <Carousel className="taxon-carousel" draggable arrows dots>
+              <div>
+                <TaxonImage
+                  filename={taxon.habitus_image}
+                  alt={`${taxon.genus} ${taxon.specific_epithet} – habitus`}
+                />
+              </div>
+              <div>
+                <TaxonImage
+                  filename={taxon.terminalia_lateral_image}
+                  alt={`${taxon.genus} ${taxon.specific_epithet} – terminalia lateral`}
+                />
+              </div>
+              <div>
+                <TaxonImage
+                  filename={taxon.terminalia_dorsal_image}
+                  alt={`${taxon.genus} ${taxon.specific_epithet} – terminalia dorsal`}
+                />
+              </div>
+            </Carousel>
+          
+          
 
           <h4>Diagnosis</h4>
           <div>{taxon.diagnosis || "No diagnosis available"}</div>
