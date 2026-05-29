@@ -1,6 +1,10 @@
 # Node
 node_modules/
 .env
+.env.local
+.env.development
+.env.production
+.env*.local
 
 # Builds
 build/
@@ -14,6 +18,17 @@ npm-debug.log*
 
 # env
 backend/.env
+backend/.env.local
+backend/.env.development
+backend/.env.production
+backend/.env*.local
+
+frontend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+frontend/.env*.local
+
 backend/test-db.js
 
 
