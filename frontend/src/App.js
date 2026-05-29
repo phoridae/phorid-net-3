@@ -1,8 +1,6 @@
-// App.jsx / App.js
 import React from 'react';
 import {
   BrowserRouter,
-  HashRouter,
   Routes,
   Route,
 } from 'react-router-dom';
@@ -26,10 +24,7 @@ import Literature from './pages/Literature';
 import MoreResources from './pages/ProjectsAndNews';
 import AminoAcid from './pages/AminoAcidTranslate';
 
-
-// Use hash on GitHub Pages; browser locally
-const Router =
-  process.env.NODE_ENV === 'production' ? HashRouter : BrowserRouter;
+const Router = BrowserRouter;
 
 export default function App() {
   return (
@@ -38,7 +33,9 @@ export default function App() {
         <Navbar />
         <Routes>
           <Route path="/login" element={<Login />} />
+
           <Route path="/" element={<HomePage />} />
+
           <Route
             path="/admin"
             element={
@@ -47,36 +44,42 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/admin/morphometrics"
+            element={
+              <ProtectedRoute>
+                <Morphometrics />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/literature"
+            element={
+              <ProtectedRoute>
+                <Literature />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/amino-acid-translator"
+            element={
+              <ProtectedRoute>
+                <AminoAcid />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/phoridae/newsletters" element={<PhoridNewsletters />} />
           <Route path="/phoridae/identification-keys" element={<IdentificationKeys />} />
-          <Route path="/phoridae/morphometrics" element={
-            <ProtectedRoute>
-              <Morphometrics />
-            </ProtectedRoute>
-            } 
-          />
           <Route path="/phoridae/photo-gallery" element={<PhotoGallery />} />
           <Route path="/phoridae/crisis" element={<Crisis />} />
           <Route path="/phoridae/about" element={<About />} />
           <Route path="/phoridae/people" element={<People />} />
           <Route path="/phoridae/gbif-viewer" element={<GbifViewer />} />
           <Route path="/phoridae/more-resources" element={<MoreResources />} />
-          <Route path="/phoridae/literature" element={
-            <ProtectedRoute>
-              <Literature />
-            </ProtectedRoute>
-            } 
-          />
-          <Route path="/phoridae/amino-acid-translator" element={
-            <ProtectedRoute>
-              <AminoAcid />
-            </ProtectedRoute>
-            } 
-          />
-
-
-          {/* (Optional) catch-all to a NotFound page */}
-          {/* <Route path="*" element={<NotFound />} /> */}
         </Routes>
         <Footer />
       </Router>

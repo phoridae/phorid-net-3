@@ -6,15 +6,20 @@ import { FaUser } from "react-icons/fa";
 import { useAuth } from "../auth/AuthContext";
 import { Popconfirm, message } from "antd";
 
-
 function Navbar() {
   const { user, logout } = useAuth();
 
   const handleLogout = async () => {
-    await logout();
-    message.success("Signed out");
+    try {
+      await logout();
+      message.success("Signed out");
+    } catch (err) {
+      console.error(err);
+      message.error("Sign out failed");
+    }
   };
 
+  const userLabel = user?.displayName || user?.email || "Admin";
 
   return (
     <nav className="navbar">
@@ -33,32 +38,38 @@ function Navbar() {
         >
           PCAT
         </a>
+
         <NavLink to="/phoridae/photo-gallery" className="nav-link">
           Gallery
         </NavLink>
+
         <NavLink to="/phoridae/identification-keys" className="nav-link">
-           Keys
+          Keys
         </NavLink>
+
         <NavLink to="/phoridae/more-resources" className="nav-link">
           Projects
         </NavLink>
+
         <NavLink to="/phoridae/people" className="nav-link">
           People
         </NavLink>
+
         <NavLink to="/phoridae/about" className="nav-link">
           About
         </NavLink>
+
         {user && (
-        <NavLink to="/admin" className="nav-link">
-          Admin
-        </NavLink>
+          <NavLink to="/admin" className="nav-link">
+            Admin
+          </NavLink>
         )}
       </div>
 
       <div className="navbar-right">
         {user ? (
           <>
-            <span className="username-label">Hello, {user.username}</span>
+            <span className="username-label">Signed in as {userLabel}</span>
 
             <Popconfirm
               title="Sign out?"
@@ -74,7 +85,8 @@ function Navbar() {
                 title="Sign out"
                 type="button"
               >
-                <FaUser size={24} />
+                <FaUser size={18} />
+                <span>Sign out</span>
               </button>
             </Popconfirm>
           </>
@@ -82,9 +94,10 @@ function Navbar() {
           <NavLink
             to="/login"
             className="user-icon-button"
-            title="Login"
+            title="Sign in"
           >
-            <FaUser size={24} />
+            <FaUser size={18} />
+            <span>Sign in</span>
           </NavLink>
         )}
       </div>
