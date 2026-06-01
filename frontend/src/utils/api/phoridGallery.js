@@ -1174,13 +1174,6 @@ const photoGalleryData = [
     ]
   },
   {
-    "genus": "Pseudomyriophora",
-    "tags": ["parasitoid"],
-    "images": [
-      "https://phorid.net/uploads_genera/Pseudomyriophora-lateral.jpg"
-    ]
-  },
-  {
     "genus": "Pseudoplastophora",
     "images": [
     ]
