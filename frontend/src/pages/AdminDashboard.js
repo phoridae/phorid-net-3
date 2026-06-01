@@ -25,7 +25,7 @@ const AdminDashboard = () => {
             <Card
               hoverable
               title="Morphometrics"
-              onClick={() => navigate("/phoridae/morphometrics")}
+              onClick={() => navigate("/admin/morphometrics")}
             >
               Landmark annotation, wing analysis, and morphometric tools.
             </Card>
@@ -35,7 +35,7 @@ const AdminDashboard = () => {
             <Card 
               hoverable 
               title="Literature"
-              onClick={() => navigate("/phoridae/literature")}
+              onClick={() => navigate("/admin/literature")}
             >
               Manage PDFs, references, and extracted metadata.
             </Card>
@@ -57,7 +57,7 @@ const AdminDashboard = () => {
             <Card 
               hoverable 
               title="Amino Acid Translator"
-              onClick={() => navigate("/phoridae/amino-acid-translator")}
+              onClick={() => navigate("/admin/amino-acid-translator")}
             >
               Simple, quick amino acid translator.
             </Card>
