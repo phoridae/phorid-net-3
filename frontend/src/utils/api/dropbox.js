@@ -1,25 +1,51 @@
-import { API_BASE } from "./config";
+import { auth } from "../../firebase";
 
-export async function searchDropbox(query) {
-  const res = await fetch(
-    `${API_BASE}/api/dropbox/search?q=${encodeURIComponent(query)}`
-  );
+const API_ROOT = process.env.REACT_APP_API_ROOT || "";
 
-  if (!res.ok) {
-    throw new Error("Dropbox search failed");
+async function getAuthHeaders() {
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error("You must be signed in.");
   }
 
-  const json = await res.json();
-  return json.results || [];
+  const token = await user.getIdToken();
+
+  return {
+    Authorization: `Bearer ${token}`,
+  };
 }
 
-export async function openDropboxPdf(id) {
-  const res = await fetch(`${API_BASE}/api/dropbox/open?path=${id}`);
+export async function searchDropbox(query) {
+  const headers = await getAuthHeaders();
 
-  if (!res.ok) {
-    throw new Error("Failed to open PDF");
+  const response = await fetch(
+    `${API_ROOT}/api/dropbox/search?q=${encodeURIComponent(query)}`,
+    { headers }
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Dropbox search failed");
   }
 
-  const { link } = await res.json();
-  return link;
+  const data = await response.json();
+  return data.results || [];
+}
+
+export async function openDropboxPdf(path) {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(
+    `${API_ROOT}/api/dropbox/open?path=${encodeURIComponent(path)}`,
+    { headers }
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Failed to open PDF");
+  }
+
+  const data = await response.json();
+  return data.link;
 }
