@@ -12,9 +12,11 @@ const SpeciesTab = ({ selectedGenus }) => {
   const [filteredSpecies, setFilteredSpecies] = useState([]);
   const [statusFilters, setStatusFilters] = useState([]);
   const [genusFilters, setGenusFilters] = useState([]);
-  const [activeGenusFilters, setActiveGenusFilters] = useState([]);
 
-  // -------- Fetch once (cache-aware) --------
+  const [activeGenusFilters, setActiveGenusFilters] = useState([]);
+  const [activeStatusFilters, setActiveStatusFilters] = useState([]);
+
+  // -------- Fetch once cache-aware --------
   useEffect(() => {
     fetchSpecies();
   }, []);
@@ -26,17 +28,22 @@ const SpeciesTab = ({ selectedGenus }) => {
     }
   }, [selectedGenus]);
 
-    useEffect(() => {
-        if (activeGenusFilters.length > 0) {
-            const filtered = species.filter((s) =>
-            activeGenusFilters.includes(s.genus)
-            );
-            setFilteredSpecies(filtered);
-        } else {
-            setFilteredSpecies(species);
-        }
-    }, [activeGenusFilters, species]);
+  // -------- Apply controlled filters --------
+  useEffect(() => {
+    let next = [...species];
 
+    if (activeGenusFilters.length > 0) {
+      next = next.filter((s) => activeGenusFilters.includes(s.genus));
+    }
+
+    if (activeStatusFilters.length > 0) {
+      next = next.filter((s) =>
+        activeStatusFilters.includes(s.taxonomicStatus)
+      );
+    }
+
+    setFilteredSpecies(next);
+  }, [species, activeGenusFilters, activeStatusFilters]);
 
   // -------- Fetch species --------
   const fetchSpecies = async () => {
@@ -45,10 +52,11 @@ const SpeciesTab = ({ selectedGenus }) => {
     const cached = sessionStorage.getItem(CACHE_KEY);
     if (cached) {
       const parsed = JSON.parse(cached);
-      setSpecies(parsed.data);
-      setFilteredSpecies(parsed.data);
-      setStatusFilters(parsed.statusFilters);
-      setGenusFilters(parsed.genusFilters);
+
+      setSpecies(parsed.data || []);
+      setStatusFilters(parsed.statusFilters || []);
+      setGenusFilters(parsed.genusFilters || []);
+
       setLoading(false);
       return;
     }
@@ -109,7 +117,6 @@ const SpeciesTab = ({ selectedGenus }) => {
       );
 
       setSpecies(mapped);
-      setFilteredSpecies(mapped);
       setStatusFilters(statusFilterItems);
       setGenusFilters(genusFilterItems);
     } catch (err) {
@@ -120,19 +127,13 @@ const SpeciesTab = ({ selectedGenus }) => {
   };
 
   // -------- Table change handler --------
-  const handleTableChange = (pagination, filters, sorter, extra) => {
-    setFilteredSpecies(extra.currentDataSource);
-
-    if (filters.genus && filters.genus.length > 0) {
-      setActiveGenusFilters(filters.genus);
-    } else {
-      setActiveGenusFilters([]);
-    }
+  const handleTableChange = (pagination, filters) => {
+    setActiveGenusFilters(filters.genus || []);
+    setActiveStatusFilters(filters.taxonomicStatus || []);
   };
 
-  // -------- Summary (always reflects table state) --------
-  const summarySource =
-    filteredSpecies.length > 0 ? filteredSpecies : species;
+  // -------- Summary reflects controlled filtered data --------
+  const summarySource = filteredSpecies;
 
   const totalSpecies = summarySource.length;
 
@@ -182,8 +183,10 @@ const SpeciesTab = ({ selectedGenus }) => {
       dataIndex: "taxonomicStatus",
       key: "taxonomicStatus",
       filters: statusFilters,
+      filteredValue:
+        activeStatusFilters.length > 0 ? activeStatusFilters : null,
       onFilter: (value, record) => record.taxonomicStatus === value,
-      width: 160,
+      width: 190,
     },
     {
       title: "Published In",
@@ -199,6 +202,7 @@ const SpeciesTab = ({ selectedGenus }) => {
     <>
       <div style={{ marginBottom: 12 }}>
         <Tag color="blue">Data source: GBIF</Tag>
+
         <div style={{ marginTop: 4, color: "#666" }}>
           <div>Number of genera: {uniqueGeneraCount}</div>
           <div>Number of species: {totalSpecies}</div>
@@ -213,9 +217,16 @@ const SpeciesTab = ({ selectedGenus }) => {
         </div>
       )}
 
+      {activeStatusFilters.length > 0 && (
+        <div style={{ marginBottom: 8, color: "#666" }}>
+          Filtered to status:{" "}
+          <strong>{activeStatusFilters.join(", ")}</strong>
+        </div>
+      )}
+
       <Table
         columns={columns}
-        dataSource={species}
+        dataSource={filteredSpecies}
         rowKey="key"
         onChange={handleTableChange}
         pagination={{
