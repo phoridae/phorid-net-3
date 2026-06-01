@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Table, Button, Input } from "antd";
+import { Table, Input } from "antd";
 import { searchDropbox, openDropboxPdf } from "../utils/api/dropbox";
 
 const { Search } = Input;
@@ -39,9 +39,9 @@ export default function Literature() {
       title: "Action",
       key: "action",
       render: (_, record) => (
-        <a onClick={() => openPdf(record.id)}>
-          Download PDF
-        </a>
+      <a onClick={() => openPdf(record.path)}>
+        Download PDF
+      </a>
       ),
     },
   ];
@@ -51,9 +51,10 @@ export default function Literature() {
       <h2>Literature</h2>
 
       <Search
-        placeholder="Search papers (filename or text)"
+        placeholder="Search papers by filename or text"
         onSearch={runSearch}
         enterButton
+        allowClear
         style={{ maxWidth: 500, marginBottom: 16 }}
       />
 
