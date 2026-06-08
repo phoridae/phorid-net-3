@@ -261,7 +261,8 @@ const SpecimensPage = () => {
               {count > MAX_SPECIMENS && (
                 <div style={{ color: "#d48806" }}>
                   Results exceed the display limit. Only the first{" "}
-                  {MAX_SPECIMENS.toLocaleString()} specimens will be processed.
+                  {MAX_SPECIMENS.toLocaleString()} specimens will be processed. <br></br>
+                  If you need larger result sets, see the GBIF API documentation.
                 </div>
               )}
 

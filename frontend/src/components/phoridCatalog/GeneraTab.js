@@ -121,8 +121,8 @@ const GeneraTab = ({ onSelectGenus }) => {
       <div style={{ marginBottom: 12 }}>
         <Tag color="blue">Data source: GBIF</Tag>
         <div style={{ marginTop: 4, color: "#666" }}>
-          <div>Number of genera: {totalGenera}</div>
-          <div>Number of accepted genera: {acceptedGenera}</div>
+          <div>Number of total genera showing: {totalGenera}</div>
+          <div>Number of accepted genera showing: {acceptedGenera}</div>
         </div>
       </div>
 

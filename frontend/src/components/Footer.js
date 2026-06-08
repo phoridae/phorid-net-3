@@ -37,8 +37,6 @@ const Footer = () => {
 
         <div className="social-links">
           <a href="https://github.com/phoridae/phorid-net-3" target="_blank" rel="noreferrer">GitHub</a>
-          <a href="#" aria-disabled>Bluesky</a>
-          <a href="#" aria-disabled>Instagram</a>
         </div>
       </div>
     </footer>

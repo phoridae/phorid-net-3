@@ -203,26 +203,28 @@ const SpeciesTab = ({ selectedGenus }) => {
       <div style={{ marginBottom: 12 }}>
         <Tag color="blue">Data source: GBIF</Tag>
 
+        {activeStatusFilters.length > 0 && (
+          <div style={{ marginBottom: 8, color: "#666" }}>
+            Filtered to status:{" "}
+            <strong>{activeStatusFilters.join(", ")}</strong>
+          </div>
+        )}
+
+        {activeGenusFilters.length > 0 && (
+          <div style={{ marginBottom: 8, color: "#666" }}>
+            Filtered to genus:{" "}
+            <strong>{activeGenusFilters.join(", ")}</strong>
+          </div>
+        )}
         <div style={{ marginTop: 4, color: "#666" }}>
-          <div>Number of genera: {uniqueGeneraCount}</div>
-          <div>Number of species: {totalSpecies}</div>
-          <div>Number of accepted species: {acceptedSpecies}</div>
+          <div>Number of genera in current filter: {uniqueGeneraCount}</div>
+          <div>Number of total species in current filter: {totalSpecies}</div>
+          <div>Number of accepted species in current filter: {acceptedSpecies}</div>
         </div>
       </div>
 
-      {activeGenusFilters.length > 0 && (
-        <div style={{ marginBottom: 8, color: "#666" }}>
-          Filtered to genus:{" "}
-          <strong>{activeGenusFilters.join(", ")}</strong>
-        </div>
-      )}
 
-      {activeStatusFilters.length > 0 && (
-        <div style={{ marginBottom: 8, color: "#666" }}>
-          Filtered to status:{" "}
-          <strong>{activeStatusFilters.join(", ")}</strong>
-        </div>
-      )}
+
 
       <Table
         columns={columns}

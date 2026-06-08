@@ -475,7 +475,19 @@ const HomePage = () => {
                 </Card>
               </a>
             </Col>
-
+             {/* ICD 11 */}
+            <Col xs={24} sm={12} md={12} lg={6}>
+              <a
+                href="https://icd11.biol.pmf.hr/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none" }}
+              >
+                <Card hoverable title="ICD XI">
+                  11th meeting of the Interational Congress of Dipterology
+                </Card>
+              </a>
+            </Col>
           </Row>
         </div>
       </div>
