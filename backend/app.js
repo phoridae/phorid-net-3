@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const express = require("express");
 const app = express();
 
@@ -7,13 +7,28 @@ app.use(express.json());
 const pool = require("./db");
 
 (async () => {
-  const [rows] = await pool.query("SELECT 1");
-  console.log("DB OK:", rows);
+  try {
+    const [rows] = await pool.query("SELECT 1");
+    console.log("DB OK:", rows);
+  } catch (err) {
+    console.error("DB connection check failed:", err.message);
+  }
 })();
 
 // CORS (simple, dev-friendly)
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+  const origin = req.headers.origin;
+
+  if (!origin || allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin || allowedOrigins[0]);
+  }
+
+  res.header("Vary", "Origin");
   res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
@@ -22,6 +37,16 @@ app.use((req, res, next) => {
   }
 
   next();
+});
+
+// healtch check route
+app.get("/health", (req, res) => {
+  res.json({
+    ok: true,
+    service: "phorid-net-api",
+    env: process.env.NODE_ENV || "unknown",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Routes

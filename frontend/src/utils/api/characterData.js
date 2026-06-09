@@ -1,9 +1,9 @@
-import { API_BASE } from "./config";
+import { apiUrl } from "./config";
 
 export async function fetchCharacterData(label) {
   try {
     const response = await fetch(
-      `${API_BASE}/flies/keyCharacters?selectedGenus=${encodeURIComponent(label)}`
+      apiUrl(`/flies/keyCharacters?selectedGenus=${encodeURIComponent(label)}`)
     );
 
     if (!response.ok) {

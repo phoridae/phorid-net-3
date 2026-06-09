@@ -1,21 +1,17 @@
-import { API_BASE } from "./config";
+import { apiUrl } from "./config";
 
 /**
  * Fetch taxa matching selected character filters
  *
  * @param {string} selectedGenus
  * @param {object} selectedCharacters
- *   e.g. {
- *     costal_vein: "long",
- *     vein_sc: "present",
- *     hind_femur_maculation: "dark"
- *   }
  */
 export async function fetchTaxonData(selectedGenus, selectedCharacters) {
   try {
     if (!selectedGenus) {
       throw new Error("selectedGenus is required");
     }
+
     if (!selectedCharacters) {
       throw new Error("selectedCharacters is required");
     }
@@ -26,7 +22,7 @@ export async function fetchTaxonData(selectedGenus, selectedCharacters) {
     });
 
     const response = await fetch(
-      `${API_BASE}/flies/selectedCharacters?${params.toString()}`
+      apiUrl(`/flies/selectedCharacters?${params.toString()}`)
     );
 
     if (!response.ok) {

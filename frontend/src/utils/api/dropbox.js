@@ -1,6 +1,5 @@
 import { auth } from "../../firebase";
-
-const API_ROOT = process.env.REACT_APP_API_ROOT || "";
+import { apiUrl } from "./config";
 
 async function getAuthHeaders() {
   const user = auth.currentUser;
@@ -20,7 +19,7 @@ export async function searchDropbox(query) {
   const headers = await getAuthHeaders();
 
   const response = await fetch(
-    `${API_ROOT}/api/dropbox/search?q=${encodeURIComponent(query)}`,
+    apiUrl(`/api/dropbox/search?q=${encodeURIComponent(query)}`),
     { headers }
   );
 
@@ -37,7 +36,7 @@ export async function openDropboxPdf(path) {
   const headers = await getAuthHeaders();
 
   const response = await fetch(
-    `${API_ROOT}/api/dropbox/open?path=${encodeURIComponent(path)}`,
+    apiUrl(`/api/dropbox/open?path=${encodeURIComponent(path)}`),
     { headers }
   );
 
