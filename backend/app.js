@@ -2,7 +2,7 @@ require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const express = require("express");
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
 const pool = require("./db");
 
@@ -52,6 +52,7 @@ app.get("/health", (req, res) => {
 // Routes
 app.use("/flies", require("./routes/flies"));
 app.use("/api/dropbox", require("./routes/dropbox"));
+app.use("/api/gbif-import", require("./routes/gbifImport"));
 
 // Errors
 app.use((req, res) => {

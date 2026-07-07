@@ -29,7 +29,17 @@ frontend/.env.development
 frontend/.env.production
 frontend/.env*.local
 
+gbif_sync_tooling/.env
+gbif_sync_tooling/.env.local
+gbif_sync_tooling/.env.development
+gbif_sync_tooling/.env.production
+gbif_sync_tooling/.env*.local
+
 backend/test-db.js
+
+# gbif syinc tooling temp
+
+gbif_sync_tooling/tmp/*
 
 
 
