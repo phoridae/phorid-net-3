@@ -42,8 +42,12 @@ const AdminDashboard = () => {
           </Col>
 
           <Col xs={24} sm={12} md={12} lg={6}>
-            <Card hoverable title="Research Databases">
-              Phorid Catalog tools and taxonomic data management.
+            <Card
+              hoverable 
+              title="GBIF Cache"
+              onClick={() => navigate("/admin/gbif-cache")}
+            >
+              This is a full working snapshot of the phorids on GBIF.
             </Card>
           </Col>
 
