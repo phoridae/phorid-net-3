@@ -53,6 +53,7 @@ app.get("/health", (req, res) => {
 app.use("/flies", require("./routes/flies"));
 app.use("/api/dropbox", require("./routes/dropbox"));
 app.use("/api/gbif-import", require("./routes/gbifImport"));
+app.use("/api/admin/gbif", require("./routes/gbifOccurrences"));
 
 // Errors
 app.use((req, res) => {

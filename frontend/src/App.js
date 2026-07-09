@@ -16,6 +16,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
+import GbifCache from './pages/GbifCache';
 import Crisis from './pages/Crisis';
 import About from './pages/About';
 import People from './pages/People';
@@ -68,6 +69,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <AminoAcid />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/gbif-cache"
+            element={
+              <ProtectedRoute>
+                <GbifCache />
               </ProtectedRoute>
             }
           />
