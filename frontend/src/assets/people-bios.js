@@ -20,13 +20,10 @@ behavior, and biodiversity, with a particular emphasis on the Neotropical Region
   {
     id: "hartop",
     name: "Emily Anne Hartop",
-    title: "Associate Professor & Biodiversity Scientist",
+    title: "Associate Professor",
     affiliation: "NTNU University Museum, Norway",
     bio: `
-Emily Hartop is a biodiversity scientist specializing in scuttle flies (Diptera:
-Phoridae) and other hyperdiverse insect groups. Her research integrates molecular
-and morphological approaches to taxonomy, species discovery, and natural history,
-including work on large-scale biodiversity projects such as BioSCAN.
+Emily Hartop is a biodiversity scientist specialising in scuttle flies (Diptera: Phoridae) and other hyperdiverse, poorly known “dark taxa”. Her research focuses on bringing these largely overlooked organisms into modern biodiversity science. She combines taxonomy, DNA barcoding, morphology, natural history collections, machine learning, and emerging sequencing technologies to develop scalable ways of documenting and studying biodiversity. Her work spans large-scale insect datasets, automated analysis of museum specimens, accessible molecular workflows, and biodiversity monitoring. A central theme of her research is understanding what dark taxa can tell us about ecological communities and biodiversity change when we finally include them in the picture.
     `.trim(),
     image: `${process.env.PUBLIC_URL}/images/people/eahartop.jpg`,
     links: [
