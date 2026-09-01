@@ -76,6 +76,23 @@ const AdminDashboard = () => {
           </Col>
         </Row>
       </div>
+      
+      <div>
+        <h2>August 2026 Updates</h2>
+        <p>- Emily's bio</p>
+        <p>- Admin dashboard updates and temp accounts</p>
+        <p>Plan for September</p>
+        <p>- Phorid photo gallery improvements</p>
+        <p>- Feedback on GBIF cache and updates</p>
+
+        <h2>July 2026 Updates</h2>
+        <p>- Infrastructure to sync GBIF phorids</p>
+        <p>- Local, high performance copy of GBIF phorids</p>
+        <p>- New admin page for GBIF catalog</p>
+        <p>- Firebase authentication and token permissions parsing</p>
+        <p>- Refresh tokens for Dropbox phorid literature to prevent quick expiry</p>
+
+      </div>
       <div>
         <h2>Vision for Catalog</h2>
         <p>
