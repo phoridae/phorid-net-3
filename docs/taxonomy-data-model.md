@@ -1,0 +1,14 @@
+- Species descriptions are workspace-specific interpretations.
+- Descriptions are mutable, not authoritative/final.
+- Characters are globally reusable.
+- Workspaces may reuse characters.
+- Identification keys are independent of workspaces.
+- A key selects specific species_descriptions.
+- Keys may use descriptions from multiple workspaces.
+- Draft keys may contain work-in-progress species.
+- Published keys may contain only published species.
+- Missing observation means unscored/unknown, NOT absent.
+- A species may exhibit multiple states for one categorical character.
+- Within one character, multiple compatible states are alternatives.
+- Across selected characters, filtering uses intersection/AND logic.
+- Publications/specimens for a key are derived from its selected descriptions.

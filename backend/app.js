@@ -4,16 +4,22 @@ const app = express();
 
 app.use(express.json({ limit: "10mb" }));
 
-const pool = require("./db");
+const databasePools = [
+  { label: "legacy", pool: require("./db") },
+  { label: "GBIF", pool: require("./dbGbif") },
+  { label: "taxonomy", pool: require("./dbTaxonomy") },
+];
 
-(async () => {
+async function checkDatabaseConnection({ label, pool }) {
   try {
-    const [rows] = await pool.query("SELECT 1");
-    console.log("DB OK:", rows);
+    const [rows] = await pool.query("SELECT DATABASE() AS database_name");
+    console.log(`DB OK [${label}]: ${rows[0].database_name}`);
   } catch (err) {
-    console.error("DB connection check failed:", err.message);
+    console.error(`DB connection check failed [${label}]:`, err.message);
   }
-})();
+}
+
+void Promise.all(databasePools.map(checkDatabaseConnection));
 
 // CORS (simple, dev-friendly)
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "")
@@ -54,6 +60,7 @@ app.use("/flies", require("./routes/flies"));
 app.use("/api/dropbox", require("./routes/dropbox"));
 app.use("/api/gbif-import", require("./routes/gbifImport"));
 app.use("/api/admin/gbif", require("./routes/gbifOccurrences"));
+app.use("/api/taxonomy", require("./routes/taxonomy"));
 
 // Errors
 app.use((req, res) => {
