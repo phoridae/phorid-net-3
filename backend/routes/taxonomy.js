@@ -1,7 +1,33 @@
 const express = require("express");
 const taxonomyPool = require("../dbTaxonomy");
+const requireAdmin = require("../middleware/requireAdmin");
 
 const router = express.Router();
+
+router.use(requireAdmin);
+
+router.get("/health", async (req, res) => {
+  try {
+    const [rows] = await taxonomyPool.query(`
+      SELECT
+        DATABASE() AS database_name,
+        NOW() AS server_time
+    `);
+
+    res.json({
+      ok: true,
+      service: "taxonomy-api",
+      database: rows[0],
+    });
+  } catch (error) {
+    console.error("Taxonomy database health check failed:", error);
+    res.status(503).json({
+      ok: false,
+      service: "taxonomy-api",
+      error: "Taxonomy database unavailable",
+    });
+  }
+});
 
 function serializeId(value) {
   return value === null || value === undefined ? null : String(value);

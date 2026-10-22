@@ -60,6 +60,8 @@ app.use("/flies", require("./routes/flies"));
 app.use("/api/dropbox", require("./routes/dropbox"));
 app.use("/api/gbif-import", require("./routes/gbifImport"));
 app.use("/api/admin/gbif", require("./routes/gbifOccurrences"));
+app.use("/api/taxonomy/keys", require("./routes/keys"));
+app.use("/api/taxonomy", require("./routes/taxonomyEditing"));
 app.use("/api/taxonomy", require("./routes/taxonomy"));
 
 // Errors
