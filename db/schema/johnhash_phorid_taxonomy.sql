@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Oct 23, 2026 at 01:54 PM
+-- Generation Time: Oct 23, 2026 at 03:33 PM
 -- Server version: 10.5.25-MariaDB-cll-lve
 -- PHP Version: 8.1.34
 
@@ -369,6 +369,7 @@ INSERT INTO `publications` (`id`, `short_label`, `citation`, `doi`, `url`, `note
 CREATE TABLE `species` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `gbif_taxon_key` bigint(20) UNSIGNED DEFAULT NULL,
+  `col_xr_taxon_key` varchar(64) DEFAULT NULL,
   `genus` varchar(128) NOT NULL,
   `specific_epithet` varchar(128) DEFAULT NULL,
   `species_status` enum('published','work_in_progress') NOT NULL DEFAULT 'published',
@@ -382,14 +383,14 @@ CREATE TABLE `species` (
 -- Dumping data for table `species`
 --
 
-INSERT INTO `species` (`id`, `gbif_taxon_key`, `genus`, `specific_epithet`, `species_status`, `working_name`, `notes`, `created_at`, `updated_at`) VALUES
-(2, NULL, 'Myriophora', 'testa', 'published', NULL, NULL, '2026-09-25 22:35:52', '2026-09-25 22:35:52'),
-(3, NULL, 'Myriophora', 'exempla', 'published', NULL, NULL, '2026-09-25 22:35:52', '2026-09-25 22:35:52'),
-(4, NULL, 'Testphora', 'borealis', 'published', NULL, NULL, '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
-(5, NULL, 'Testphora', 'occidentalis', 'published', NULL, NULL, '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
-(6, NULL, 'Testphora', NULL, 'work_in_progress', 'Prairie 1', NULL, '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
-(9, NULL, 'Postmanevidentiophora', 'primary1792713855081', 'published', NULL, 'Disposable primary species for evidence hierarchy test', '2026-10-23 00:04:15', '2026-10-23 00:04:15'),
-(10, NULL, 'Postmanevidentiophora', 'other1792713855081', 'published', NULL, 'Disposable second species for derived-from validation', '2026-10-23 00:04:15', '2026-10-23 00:04:15');
+INSERT INTO `species` (`id`, `gbif_taxon_key`, `col_xr_taxon_key`, `genus`, `specific_epithet`, `species_status`, `working_name`, `notes`, `created_at`, `updated_at`) VALUES
+(2, NULL, NULL, 'Myriophora', 'testa', 'published', NULL, NULL, '2026-09-25 22:35:52', '2026-09-25 22:35:52'),
+(3, NULL, NULL, 'Myriophora', 'exempla', 'published', NULL, NULL, '2026-09-25 22:35:52', '2026-09-25 22:35:52'),
+(4, NULL, NULL, 'Testphora', 'borealis', 'published', NULL, NULL, '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
+(5, NULL, NULL, 'Testphora', 'occidentalis', 'published', NULL, NULL, '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
+(6, NULL, NULL, 'Testphora', NULL, 'work_in_progress', 'Prairie 1', NULL, '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
+(9, NULL, NULL, 'Postmanevidentiophora', 'primary1792713855081', 'published', NULL, 'Disposable primary species for evidence hierarchy test', '2026-10-23 00:04:15', '2026-10-23 00:04:15'),
+(10, NULL, NULL, 'Postmanevidentiophora', 'other1792713855081', 'published', NULL, 'Disposable second species for derived-from validation', '2026-10-23 00:04:15', '2026-10-23 00:04:15');
 
 -- --------------------------------------------------------
 
@@ -708,6 +709,7 @@ ALTER TABLE `publications`
 ALTER TABLE `species`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_species_gbif_taxon_key` (`gbif_taxon_key`),
+  ADD UNIQUE KEY `uq_species_col_xr_taxon_key` (`col_xr_taxon_key`),
   ADD KEY `idx_species_name` (`genus`,`specific_epithet`),
   ADD KEY `idx_species_genus` (`genus`),
   ADD KEY `idx_species_status` (`species_status`);
@@ -783,19 +785,19 @@ ALTER TABLE `workspace_species`
 -- AUTO_INCREMENT for table `characters`
 --
 ALTER TABLE `characters`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `character_observations`
 --
 ALTER TABLE `character_observations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT for table `character_states`
 --
 ALTER TABLE `character_states`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `identification_keys`
@@ -813,13 +815,13 @@ ALTER TABLE `publications`
 -- AUTO_INCREMENT for table `species`
 --
 ALTER TABLE `species`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `species_descriptions`
 --
 ALTER TABLE `species_descriptions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `specimen_observations`
@@ -831,13 +833,13 @@ ALTER TABLE `specimen_observations`
 -- AUTO_INCREMENT for table `specimen_references`
 --
 ALTER TABLE `specimen_references`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `workspaces`
 --
 ALTER TABLE `workspaces`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- Constraints for dumped tables

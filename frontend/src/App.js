@@ -3,6 +3,7 @@ import {
   BrowserRouter,
   Routes,
   Route,
+  Navigate,
 } from 'react-router-dom';
 
 import Navbar from './components/Navbar';
@@ -17,6 +18,7 @@ import ProtectedRoute from "./auth/ProtectedRoute";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import TaxonomyWorkbench from "./pages/TaxonomyWorkbench";
+import TaxonomySection from "./components/taxonomy/TaxonomySection";
 import GbifCache from './pages/GbifCache';
 import Crisis from './pages/Crisis';
 import About from './pages/About';
@@ -54,7 +56,16 @@ export default function App() {
                 <TaxonomyWorkbench />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<Navigate to="species" replace />} />
+            <Route path="species" element={<TaxonomySection sectionKey="species" />} />
+            <Route path="specimens" element={<TaxonomySection sectionKey="specimens" />} />
+            <Route path="characters" element={<TaxonomySection sectionKey="characters" />} />
+            <Route path="data-entry" element={<TaxonomySection sectionKey="data-entry" />} />
+            <Route path="descriptions" element={<TaxonomySection sectionKey="descriptions" />} />
+            <Route path="keys" element={<TaxonomySection sectionKey="keys" />} />
+            <Route path="*" element={<Navigate to="/admin/taxonomy/species" replace />} />
+          </Route>
 
           <Route
             path="/admin/morphometrics"

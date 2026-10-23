@@ -812,3 +812,83 @@ test("GBIF occurrence validation, uniqueness and external IDs are unchanged by s
   assert.equal(changed.body.species.gbif_taxon_key, "1234567");
   assert.equal((await request("PATCH", `/specimen-references/${created.body.id}`, { gbif_occurrence_key: null })).body.gbif_occurrence_key, null);
 });
+
+for (const [name, identifiers, expected] of [
+  ["legacy GBIF only", { gbif_taxon_key: "1234567" }, { gbif_taxon_key: "1234567", col_xr_taxon_key: null }],
+  ["alphanumeric COL XR only", { col_xr_taxon_key: "Q2M4" }, { gbif_taxon_key: null, col_xr_taxon_key: "Q2M4" }],
+  ["both independent external identifiers", { gbif_taxon_key: "1234567", col_xr_taxon_key: "Q2M4" }, { gbif_taxon_key: "1234567", col_xr_taxon_key: "Q2M4" }],
+  ["neither identifier", {}, { gbif_taxon_key: null, col_xr_taxon_key: null }],
+  ["explicitly null identifiers", { gbif_taxon_key: null, col_xr_taxon_key: null }, { gbif_taxon_key: null, col_xr_taxon_key: null }],
+]) {
+  test(`species creation supports ${name}`, async () => {
+    const response = await request("POST", "/species", {
+      genus: "Apocephalus", species_status: "work_in_progress", working_name: "AZ-17", ...identifiers,
+    });
+    assert.equal(response.status, 201);
+    assert.equal(response.body.gbif_taxon_key, expected.gbif_taxon_key);
+    assert.equal(response.body.col_xr_taxon_key, expected.col_xr_taxon_key);
+    assert.equal(response.body.specific_epithet, null);
+  });
+}
+
+test("COL XR uses nullable VARCHAR(64) validation without numeric conversion or GBIF-key substitution", async () => {
+  for (const value of [123, false, [], {}, "Q".repeat(65)]) {
+    const response = await request("POST", "/species", { genus: "Testphora", specific_epithet: "invalid", col_xr_taxon_key: value });
+    assert.equal(response.status, 400);
+  }
+  for (const key of ["000123", "Q".repeat(64)]) {
+    const response = await request("POST", "/species", { genus: "Testphora", specific_epithet: "valid", col_xr_taxon_key: key });
+    assert.equal(response.status, 201);
+    assert.equal(response.body.col_xr_taxon_key, key);
+    assert.equal(response.body.gbif_taxon_key, null);
+  }
+  assert.equal((await request("POST", "/species", { genus: "Testphora", specific_epithet: "invalid", gbif_taxon_key: "Q2M4" })).status, 400);
+});
+
+test("duplicate GBIF and COL XR identifiers independently return controlled 409 errors", async () => {
+  const fields = { genus: "Testphora", specific_epithet: "duplicate" };
+  assert.equal((await request("POST", "/species", { ...fields, gbif_taxon_key: "1234567", col_xr_taxon_key: "Q2M4" })).status, 201);
+  for (const identifiers of [
+    { gbif_taxon_key: "1234567", col_xr_taxon_key: "UNUSED" },
+    { gbif_taxon_key: "7654321", col_xr_taxon_key: "Q2M4" },
+  ]) {
+    const response = await request("POST", "/species", { ...fields, ...identifiers });
+    assert.equal(response.status, 409);
+    assert.equal(typeof response.body.error, "string");
+    assert.doesNotMatch(response.body.error, /UNIQUE|INSERT|constraint|uq_species/);
+  }
+  assert.equal((await query("SELECT * FROM species")).length, 2);
+  assert.equal((await request("POST", "/species", { ...fields, gbif_taxon_key: "7654321", col_xr_taxon_key: "UNUSED" })).status, 201);
+});
+
+test("workspace, description, specimen, provenance and key species reads include both external identifiers", async () => {
+  await query("UPDATE species SET gbif_taxon_key = '1234567', col_xr_taxon_key = 'Q2M4' WHERE id = 1");
+  const check = (species) => {
+    assert.equal(species.gbif_taxon_key, "1234567");
+    assert.equal(species.col_xr_taxon_key, "Q2M4");
+  };
+  const workspaceSpecies = await request("GET", "/workspaces/1/species", undefined, "admin", readRouter);
+  assert.equal(workspaceSpecies.status, 200);
+  check(workspaceSpecies.body[0]);
+  const specimenId = await createSpecimen();
+  const specimen = await request("GET", `/specimen-references/${specimenId}`);
+  check(specimen.body.species);
+  await linkSpecimen(specimenId);
+  const raw = await assertObservation(specimenId);
+  check(raw.specimen_reference.species);
+  await put(1, { state_ids: [1] });
+  await specimenEvidence([raw.id]);
+  const description = await detail();
+  assert.equal(description.status, 200);
+  check(description.body.species);
+  check(description.body.specimen_references[0].species);
+  check(description.body.character_observations[0].specimen_evidence[0].specimen_reference.species);
+  await query("INSERT INTO key_characters (key_id,character_id) VALUES (1,1)");
+  await query("INSERT INTO key_descriptions (key_id,description_id) VALUES (1,1)");
+  const candidates = await request("GET", "/1/candidates", undefined, "admin", keyRouter);
+  assert.equal(candidates.status, 200);
+  check(candidates.body[0]);
+  const filtered = await request("POST", "/1/filter", { filters: [{ character_id: 1, state_ids: [1] }] }, "admin", keyRouter);
+  assert.equal(filtered.status, 200);
+  check(filtered.body[0]);
+});

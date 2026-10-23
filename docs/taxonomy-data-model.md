@@ -68,8 +68,15 @@
 - Publications/specimens for a key are derived from its selected descriptions.
 - The SQL schema is authoritative for enums, uniqueness and FK/cascade behavior.
   The API does not add cascades to bypass restrictive relationships.
-- The taxonomy database stores GBIF's external identifiers directly:
-  species.gbif_taxon_key identifies the GBIF taxon and
+- The taxonomy database stores parallel, durable external taxonomic identifiers
+  directly: species.gbif_taxon_key is the legacy numeric GBIF Backbone identifier;
+  species.col_xr_taxon_key is the newer Catalogue of Life Extended Release (COL XR)
+  identifier and may be alphanumeric (for example Q2M4). They are independent:
+  neither replaces, derives, or overwrites the other. Either may be NULL, and
+  working/undescribed taxa may have neither. Existing Phorid.net integrations
+  continue using the legacy GBIF key; future lookup/import workflows may populate
+  one or both identifiers. No live lookup/import is implied by storing them.
+- For specimen identity,
   specimen_references.gbif_occurrence_key identifies the GBIF occurrence.
   johnhash_phorid_research is a rebuildable/cacheable GBIF snapshot, not the
   authoritative identity link. Durable curated taxonomy records do not depend

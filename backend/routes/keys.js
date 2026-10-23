@@ -69,7 +69,7 @@ async function getCandidates(key, conditions = [], params = []) {
   const [rows] = await pool.query(`
     SELECT sd.*, kd.notes AS key_description_notes,
       kd.created_at AS key_description_created_at,
-      w.name AS workspace_name, s.gbif_taxon_key, s.genus,
+      w.name AS workspace_name, s.gbif_taxon_key, s.col_xr_taxon_key, s.genus,
       s.specific_epithet, s.species_status, s.working_name
     FROM key_descriptions kd
     JOIN species_descriptions sd ON sd.id = kd.description_id
@@ -83,6 +83,7 @@ async function getCandidates(key, conditions = [], params = []) {
   return rows.map((row) => ({
     ...row, id: id(row.id), workspace_id: id(row.workspace_id),
     species_id: id(row.species_id), gbif_taxon_key: id(row.gbif_taxon_key),
+    col_xr_taxon_key: id(row.col_xr_taxon_key),
   }));
 }
 

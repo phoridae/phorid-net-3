@@ -37,6 +37,7 @@ sql(`
   CREATE TABLE species (id TEXT, gbif_taxon_key TEXT, genus TEXT, specific_epithet TEXT, species_status TEXT, working_name TEXT);
   INSERT INTO species VALUES ('50','9007199254740993','Testphora','a','published',NULL),
     ('51',NULL,'Testphora','b','published',NULL), ('52',NULL,'Testphora',NULL,'work_in_progress','Prairie 1');
+  ALTER TABLE species ADD COLUMN col_xr_taxon_key TEXT DEFAULT NULL;
   CREATE TABLE character_observations (id TEXT, description_id TEXT, character_id TEXT, numeric_min NUMERIC, numeric_max NUMERIC);
   INSERT INTO character_observations VALUES ('1','100','10',NULL,NULL), ('2','100','11',NULL,NULL), ('3','100','12',1.5,1.8),
     ('4','101','10',NULL,NULL), ('5','101','11',NULL,NULL), ('6','101','12',1.7,2.0),
@@ -159,4 +160,15 @@ test("reject malformed bodies, wrong character/state ownership, duplicate charac
     [{ character_id: 12, min: 2, max: 1 }], [{ character_id: 12, min: Infinity }],
     [{ character_id: 12, state_ids: [20] }],
   ]) assert.equal((await filter(filters)).status, 400, JSON.stringify(filters));
+});
+
+test("key candidate metadata preserves legacy GBIF keys alongside nullable COL XR keys", async () => {
+  sql("UPDATE species SET col_xr_taxon_key = 'Q2M4' WHERE id = '50'");
+  const candidates = await request("GET", "/1/candidates");
+  const species = candidates.body.find((row) => row.species_id === "50");
+  assert.equal(species.gbif_taxon_key, "9007199254740993");
+  assert.equal(species.col_xr_taxon_key, "Q2M4");
+  assert.equal(candidates.body.find((row) => row.species_id === "52").col_xr_taxon_key, null);
+  const filtered = await filter([{ character_id: "10", state_ids: [20] }]);
+  assert.equal(filtered.body.find((row) => row.species_id === "50").col_xr_taxon_key, "Q2M4");
 });

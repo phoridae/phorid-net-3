@@ -125,6 +125,7 @@ router.get("/workspaces/:id/species", async (req, res, next) => {
           SELECT
             s.id,
             s.gbif_taxon_key,
+            s.col_xr_taxon_key,
             s.genus,
             s.specific_epithet,
             s.species_status,
@@ -177,6 +178,7 @@ router.get("/workspaces/:id/species", async (req, res, next) => {
         speciesById.set(speciesId, {
           id: speciesId,
           gbif_taxon_key: serializeId(row.gbif_taxon_key),
+          col_xr_taxon_key: serializeId(row.col_xr_taxon_key),
           genus: row.genus,
           specific_epithet: row.specific_epithet,
           species_status: row.species_status,
@@ -326,6 +328,7 @@ router.get("/descriptions/:id", async (req, res, next) => {
           w.updated_at AS workspace_updated_at,
           s.id AS species_id,
           s.gbif_taxon_key,
+          s.col_xr_taxon_key,
           s.genus,
           s.specific_epithet,
           s.species_status,
@@ -517,6 +520,7 @@ router.get("/descriptions/:id", async (req, res, next) => {
       species: {
         id: serializeId(row.species_id),
         gbif_taxon_key: serializeId(row.gbif_taxon_key),
+        col_xr_taxon_key: serializeId(row.col_xr_taxon_key),
         genus: row.genus,
         specific_epithet: row.specific_epithet,
         species_status: row.species_status,

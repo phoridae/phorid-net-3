@@ -42,6 +42,7 @@ const order = (value) => {
 const visibility = choice(["private", "shared", "public"]);
 const workspaceFields = { name: text(255, false), description: text(65535), owner_uid: text(128), visibility };
 const speciesFields = {
+  col_xr_taxon_key: text(64),
   gbif_taxon_key: (v) => v === null ? null : identifier(v), genus: text(128, false),
   specific_epithet: text(128), species_status: choice(["published", "work_in_progress"]),
   working_name: text(255), notes: text(65535),

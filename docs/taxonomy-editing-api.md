@@ -13,7 +13,7 @@ products built from exact descriptions and their synthesized character observati
 | POST | `/workspaces` | `name` required; `description`, `owner_uid`, `visibility` optional |
 | PATCH | `/workspaces/:id` | Any workspace fields above |
 | DELETE | `/workspaces/:id` | None |
-| POST | `/species` | `genus` required; `gbif_taxon_key`, `specific_epithet`, `species_status`, `working_name`, `notes` optional |
+| POST | `/species` | `genus` required; `gbif_taxon_key`, `col_xr_taxon_key`, `specific_epithet`, `species_status`, `working_name`, `notes` optional |
 | DELETE | `/species/:id` | None |
 | POST | `/workspaces/:id/species` | `species_id` required; `display_order` optional |
 | DELETE | `/workspaces/:id/species/:speciesId` | None |
@@ -51,6 +51,16 @@ Defaults and validation:
 - Species default to `published` and require a nonblank `specific_epithet`.
   `work_in_progress` species require a nonblank `working_name`. Creating a species
   does not attach it to a workspace automatically.
+  The optional external identifiers are independent: `gbif_taxon_key` is the
+  legacy numeric GBIF Backbone key (positive unsigned BIGINT, serialized as a
+  string), while `col_xr_taxon_key` is a nullable string of at most 64 characters
+  for Catalogue of Life Extended Release (COL XR). Alphanumeric values such as
+  `Q2M4` are accepted; numeric JSON values are rejected for COL XR. Neither field
+  is required, and either or both may be null, including for working taxa.
+  Each identifier has its own schema unique constraint. Duplicate non-null values
+  return controlled `409`; invalid types/lengths return `400`. Multiple nulls are
+  permitted. One identifier never fills or overwrites the other.
+  There is currently no global species PATCH endpoint; this change adds none.
 - Characters default to `categorical`; the other type is `numeric_range`.
   Only categorical characters have states; only numeric characters have units.
   A character's type cannot change while it has states or observations. Units
@@ -183,7 +193,7 @@ No identification history or competing identification assertion is generated.
 
 Specimen POST/PATCH/GET responses include the string `species_id` and a nested
 `species` record containing string `id`/`gbif_taxon_key`, genus, specific epithet,
-species status, and working name, along with other species metadata. The same
+nullable string `col_xr_taxon_key`, species status, and working name, along with other species metadata. The same
 species information appears in description-detail `specimen_references` and nested
 specimen references in raw observation and provenance responses.
 
@@ -194,12 +204,32 @@ them. Explicitly PATCH a valid species ID to assign them. New API creates requir
 species_id and PATCH rejects clearing it, so existing clients creating specimens
 must supply the assignment. This task does not backfill legacy data or change DDL.
 
-GBIF identity remains independent of the research cache. The taxonomy database
-stores GBIF's own external taxon keys in `species.gbif_taxon_key` and external
-occurrence keys in `specimen_references.gbif_occurrence_key`. The latter keeps
+External identity remains independent of the research cache. The small, durable
+taxonomy database directly stores the legacy GBIF Backbone key in
+`species.gbif_taxon_key`, the COL XR string identifier in `species.col_xr_taxon_key`,
+and GBIF occurrence keys in `specimen_references.gbif_occurrence_key`. The latter keeps
 its existing optional/null, positive-ID validation and uniqueness behavior during
 reassignment. `johnhash_phorid_research` is a rebuildable GBIF snapshot/cache;
 curated taxonomy records never depend on its internal row IDs or foreign keys.
+Existing Phorid.net/GBIF integrations continue using `gbif_taxon_key` unchanged.
+Future species lookup/import may populate one or both taxonomic identifiers;
+there are no new live GBIF/COL lookup endpoints or HTTP calls in this change.
+
+For example, `POST /api/taxonomy/species` may receive:
+
+```json
+{
+  "genus": "Testphora",
+  "specific_epithet": "example",
+  "gbif_taxon_key": "1234567",
+  "col_xr_taxon_key": "Q2M4"
+}
+```
+
+The create response and species metadata in workspace species, descriptions,
+specimen references, provenance/evidence, and key candidates/filter results expose
+both identifiers as strings or null. This is an additive response field; existing
+GBIF names, values, validation, and filtering semantics are preserved.
 
 The two examination flags accept JSON booleans, default to false, and are
 independent. `reported_material_examined: true` means reported as material examined
@@ -308,7 +338,7 @@ Removal rules and errors:
 - Missing resources/memberships return `404`. State deletion checks the parent
   character. Wrong observation state ownership, missing workspace character
   membership, and invalid bodies return `400`.
-- Duplicate GBIF taxon/occurrence keys, memberships, and state names within a
+- Duplicate GBIF taxon/occurrence keys, COL XR taxon keys, memberships, and state names within a
   character return `409`. Repeated workspace/species/sex descriptions and repeated
   specimen/character assertions are allowed. Referential conflicts and
   database deadlock/lock timeout errors also return `409`; the edit rolls back.
