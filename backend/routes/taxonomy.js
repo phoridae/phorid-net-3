@@ -1,7 +1,7 @@
 const express = require("express");
 const taxonomyPool = require("../dbTaxonomy");
 const requireAdmin = require("../middleware/requireAdmin");
-const { descriptionProvenance } = require("../services/taxonomyProvenance");
+const { descriptionProvenance, withSpecimenSpecies } = require("../services/taxonomyProvenance");
 
 const router = express.Router();
 
@@ -373,6 +373,7 @@ router.get("/descriptions/:id", async (req, res, next) => {
           `
             SELECT
               sr.id,
+              sr.species_id,
               sr.reference_type,
               sr.gbif_occurrence_key,
               sr.publication_id,
@@ -442,6 +443,7 @@ router.get("/descriptions/:id", async (req, res, next) => {
 
     const observationsById = new Map();
     const provenance = await descriptionProvenance(taxonomyPool, req.params.id);
+    const specimensWithSpecies = await withSpecimenSpecies(taxonomyPool, specimenRows);
 
     for (const observationRow of observationRows) {
       const observationId = serializeId(observationRow.observation_id);
@@ -535,8 +537,10 @@ router.get("/descriptions/:id", async (req, res, next) => {
         association_notes: publication.association_notes,
         association_created_at: publication.association_created_at,
       })),
-      specimen_references: specimenRows.map((specimen) => ({
+      specimen_references: specimensWithSpecies.map((specimen) => ({
         id: serializeId(specimen.id),
+        species_id: specimen.species_id,
+        species: specimen.species,
         reference_type: specimen.reference_type,
         gbif_occurrence_key: serializeId(specimen.gbif_occurrence_key),
         publication_id: serializeId(specimen.publication_id),

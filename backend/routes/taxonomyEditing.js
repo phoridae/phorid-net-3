@@ -1,7 +1,7 @@
 const express = require("express");
 const pool = require("../dbTaxonomy");
 const requireAdmin = require("../middleware/requireAdmin");
-const { specimenObservations } = require("../services/taxonomyProvenance");
+const { specimenObservations, withSpecimenSpecies } = require("../services/taxonomyProvenance");
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -139,6 +139,10 @@ for (const [resource, table, conflictMessage] of [
 ]) {
   router.delete(`/${resource}/:id`, mutation(async (req, db) => {
     await find(db, table, req.params.id);
+    if (resource === "species") {
+      await conflictIf(db, "SELECT id FROM specimen_references WHERE species_id = ? LIMIT 1 FOR UPDATE", [req.params.id],
+        "Cannot delete species: specimens are currently assigned to it; reassign or delete those specimen references first");
+    }
     await db.query(`DELETE FROM ${table} WHERE id = ?`, [req.params.id]);
   }, 204, conflictMessage));
 }
@@ -341,6 +345,7 @@ const idList = (value) => {
   return [...new Set(value.map(identifier))];
 };
 const specimenFields = {
+  species_id: identifier,
   reference_type: choice(["gbif", "local", "publication"]),
   gbif_occurrence_key: nullableId, publication_id: nullableId,
   institution_code: text(64), catalog_number: text(128), specimen_label: text(255), notes: text(65535),
@@ -349,22 +354,24 @@ async function validatePublication(db, publicationId) {
   if (publicationId != null) await find(db, "publications", publicationId);
 }
 router.post("/specimen-references", mutation(async (req, db) => {
-  const values = body(req, specimenFields, ["reference_type"]);
+  const values = body(req, specimenFields, ["reference_type", "species_id"]);
+  await find(db, "species", values.species_id);
   await validatePublication(db, values.publication_id);
-  return insert(db, "specimen_references", values);
+  return (await withSpecimenSpecies(db, [await insert(db, "specimen_references", values)]))[0];
 }, 201));
 router.get("/specimen-references/:id", async (req, res, next) => {
   try {
     const [specimen] = await rows(pool, "SELECT * FROM specimen_references WHERE id = ?", [req.params.id]);
     if (!specimen) return res.status(404).json({ error: "Specimen reference not found" });
-    res.json(serialize(specimen));
+    res.json((await withSpecimenSpecies(pool, [specimen]))[0]);
   } catch (error) { next(error); }
 });
 router.patch("/specimen-references/:id", mutation(async (req, db) => {
   const values = body(req, specimenFields);
   await find(db, "specimen_references", req.params.id);
+  if (Object.hasOwn(values, "species_id")) await find(db, "species", values.species_id);
   await validatePublication(db, values.publication_id);
-  return update(db, "specimen_references", req.params.id, values);
+  return (await withSpecimenSpecies(db, [await update(db, "specimen_references", req.params.id, values)]))[0];
 }));
 router.delete("/specimen-references/:id", mutation(async (req, db) => {
   await find(db, "specimen_references", req.params.id);

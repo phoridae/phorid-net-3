@@ -12,6 +12,14 @@ async function selectIds(db, table, ids) {
 }
 const indexed = (values) => new Map(values.map((row) => [id(row.id), serialize(row)]));
 
+async function withSpecimenSpecies(db, specimens) {
+  const species = indexed(await selectIds(db, "species", [...new Set(specimens.map((row) => id(row.species_id)).filter(Boolean))]));
+  return specimens.map((row) => ({
+    ...serialize(row), species_id: id(row.species_id),
+    species: species.get(id(row.species_id)) || null,
+  }));
+}
+
 async function specimenObservations(db, ids) {
   if (!ids.length) return [];
   const observations = await selectIds(db, "specimen_observations", ids);
@@ -25,7 +33,7 @@ async function specimenObservations(db, ids) {
       JOIN character_states cs ON cs.id = sos.state_id AND cs.character_id = sos.character_id
       WHERE sos.specimen_observation_id IN (${placeholders}) ORDER BY cs.display_order, cs.name, cs.id`, observations.map((row) => id(row.id))),
   ]);
-  const specimenMap = indexed(specimens), characterMap = indexed(characters), publicationMap = indexed(publications);
+  const specimenMap = indexed(await withSpecimenSpecies(db, specimens)), characterMap = indexed(characters), publicationMap = indexed(publications);
   const statesByObservation = new Map();
   for (const { specimen_observation_id, ...state } of states) {
     const key = id(specimen_observation_id);
@@ -74,4 +82,4 @@ async function descriptionProvenance(db, descriptionId) {
   return { materialPublications, observationPublications, observationSpecimens };
 }
 
-module.exports = { specimenObservations, descriptionProvenance };
+module.exports = { specimenObservations, descriptionProvenance, withSpecimenSpecies };

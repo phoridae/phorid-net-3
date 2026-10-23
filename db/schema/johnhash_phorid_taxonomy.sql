@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Oct 22, 2026 at 04:39 PM
+-- Generation Time: Oct 23, 2026 at 01:54 PM
 -- Server version: 10.5.25-MariaDB-cll-lve
 -- PHP Version: 8.1.34
 
@@ -49,7 +49,9 @@ INSERT INTO `characters` (`id`, `name`, `description`, `anatomical_region`, `dat
 (2, 'Body length', 'Total body length.', 'General', 'numeric_range', 'mm', NULL, 'private', '2026-09-25 01:24:00', '2026-09-25 01:24:00'),
 (3, 'TEST Anepisternal setae', 'Temporary categorical character for testing.', 'Thorax', 'categorical', NULL, NULL, 'private', '2026-10-05 23:49:41', '2026-10-05 23:49:41'),
 (4, 'TEST Frons color', 'Temporary categorical character for testing.', 'Head', 'categorical', NULL, NULL, 'private', '2026-10-05 23:49:41', '2026-10-05 23:49:41'),
-(5, 'TEST Body length', 'Temporary numeric-range character for testing.', 'General', 'numeric_range', 'mm', NULL, 'private', '2026-10-05 23:49:41', '2026-10-05 23:49:41');
+(5, 'TEST Body length', 'Temporary numeric-range character for testing.', 'General', 'numeric_range', 'mm', NULL, 'private', '2026-10-05 23:49:41', '2026-10-05 23:49:41'),
+(12, 'POSTMAN EVIDENCE 1792713855081 Anepisternal setae', 'Disposable categorical evidence character', 'Thorax', 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-10-23 00:04:15', '2026-10-23 00:04:15'),
+(13, 'POSTMAN EVIDENCE 1792713855081 Body length', 'Disposable numeric evidence character', 'General', 'numeric_range', 'mm', 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-10-23 00:04:16', '2026-10-23 00:04:16');
 
 -- --------------------------------------------------------
 
@@ -84,7 +86,11 @@ INSERT INTO `character_observations` (`id`, `description_id`, `character_id`, `n
 (8, 6, 4, NULL, NULL, 'unspecified', NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
 (9, 4, 5, 1.500000, 1.800000, 'unspecified', NULL, '2026-10-06 00:03:06', '2026-10-06 00:03:06'),
 (10, 5, 5, 1.700000, 2.000000, 'unspecified', NULL, '2026-10-06 00:03:06', '2026-10-06 00:03:06'),
-(11, 6, 5, 1.600000, 1.900000, 'unspecified', NULL, '2026-10-06 00:03:06', '2026-10-06 00:03:06');
+(11, 6, 5, 1.600000, 1.900000, 'unspecified', NULL, '2026-10-06 00:03:06', '2026-10-06 00:03:06'),
+(16, 11, 12, NULL, NULL, 'publication', 'Historical published synthesis.', '2026-10-23 00:04:21', '2026-10-23 00:04:21'),
+(17, 12, 12, NULL, NULL, 'specimen', 'Alpha species-level synthesis.', '2026-10-23 00:04:22', '2026-10-23 00:04:22'),
+(18, 13, 12, NULL, NULL, 'specimen', 'Beta alternative species-level synthesis.', '2026-10-23 00:04:23', '2026-10-23 00:04:23'),
+(19, 12, 13, 1.730000, 1.730000, 'specimen', 'Alpha body-length synthesis from one directly measured specimen.', '2026-10-23 00:04:23', '2026-10-23 00:04:23');
 
 -- --------------------------------------------------------
 
@@ -98,6 +104,13 @@ CREATE TABLE `character_observation_publications` (
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `character_observation_publications`
+--
+
+INSERT INTO `character_observation_publications` (`character_observation_id`, `publication_id`, `notes`, `created_at`) VALUES
+(16, 1, NULL, '2026-10-23 00:04:22');
 
 -- --------------------------------------------------------
 
@@ -114,6 +127,14 @@ CREATE TABLE `character_observation_specimen_evidence` (
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `character_observation_specimen_evidence`
+--
+
+INSERT INTO `character_observation_specimen_evidence` (`character_observation_id`, `description_id`, `specimen_reference_id`, `specimen_observation_id`, `character_id`, `notes`, `created_at`) VALUES
+(18, 13, 2, 2, 12, NULL, '2026-10-23 00:04:24'),
+(19, 12, 2, 3, 13, NULL, '2026-10-23 00:04:24');
 
 -- --------------------------------------------------------
 
@@ -143,7 +164,9 @@ INSERT INTO `character_states` (`id`, `character_id`, `name`, `description`, `di
 (9, 3, 'bare', NULL, 10, '2026-10-05 23:52:55', '2026-10-05 23:52:55'),
 (10, 3, 'small setulae', NULL, 20, '2026-10-05 23:52:55', '2026-10-05 23:52:55'),
 (11, 4, 'yellow', NULL, 10, '2026-10-05 23:52:55', '2026-10-05 23:52:55'),
-(12, 4, 'brown', NULL, 20, '2026-10-05 23:52:55', '2026-10-05 23:52:55');
+(12, 4, 'brown', NULL, 20, '2026-10-05 23:52:55', '2026-10-05 23:52:55'),
+(19, 12, 'bare', 'POSTMAN evidence state A', 10, '2026-10-23 00:04:16', '2026-10-23 00:04:16'),
+(20, 12, 'small setulae', 'POSTMAN evidence state B', 20, '2026-10-23 00:04:16', '2026-10-23 00:04:16');
 
 -- --------------------------------------------------------
 
@@ -165,7 +188,8 @@ CREATE TABLE `description_publications` (
 INSERT INTO `description_publications` (`description_id`, `publication_id`, `notes`, `created_at`) VALUES
 (4, 1, 'Published character data used for this description.', '2026-10-05 23:56:13'),
 (6, 1, 'Published information contributing to this mixed description.', '2026-10-05 23:56:37'),
-(6, 2, 'Published information contributing to this mixed description.', '2026-10-05 23:56:37');
+(6, 2, 'Published information contributing to this mixed description.', '2026-10-05 23:56:37'),
+(11, 1, 'Publication supporting the disposable published interpretation.', '2026-10-23 00:04:17');
 
 -- --------------------------------------------------------
 
@@ -187,7 +211,10 @@ CREATE TABLE `description_specimens` (
 --
 
 INSERT INTO `description_specimens` (`description_id`, `specimen_reference_id`, `reported_material_examined`, `directly_examined`, `notes`, `created_at`) VALUES
-(1, 1, 0, 0, 'Temporary specimen association for testing.', '2026-10-05 22:24:07');
+(1, 1, 0, 0, 'Temporary specimen association for testing.', '2026-10-05 22:24:07'),
+(11, 2, 1, 0, 'Historical material examined; intentionally left unscored in published interpretation.', '2026-10-23 00:04:18'),
+(12, 2, 0, 1, 'Direct evidence for Alpha interpretation.', '2026-10-23 00:04:19'),
+(13, 2, 0, 1, 'Direct evidence for Beta interpretation.', '2026-10-23 00:04:19');
 
 -- --------------------------------------------------------
 
@@ -303,7 +330,10 @@ INSERT INTO `observation_states` (`observation_id`, `character_id`, `state_id`, 
 (6, 4, 11, '2026-10-06 00:04:37'),
 (7, 3, 9, '2026-10-06 00:04:52'),
 (7, 3, 10, '2026-10-06 00:04:52'),
-(8, 4, 12, '2026-10-06 00:04:52');
+(8, 4, 12, '2026-10-06 00:04:52'),
+(16, 12, 19, '2026-10-23 00:04:22'),
+(17, 12, 19, '2026-10-23 00:04:22'),
+(18, 12, 20, '2026-10-23 00:04:23');
 
 -- --------------------------------------------------------
 
@@ -357,7 +387,9 @@ INSERT INTO `species` (`id`, `gbif_taxon_key`, `genus`, `specific_epithet`, `spe
 (3, NULL, 'Myriophora', 'exempla', 'published', NULL, NULL, '2026-09-25 22:35:52', '2026-09-25 22:35:52'),
 (4, NULL, 'Testphora', 'borealis', 'published', NULL, NULL, '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
 (5, NULL, 'Testphora', 'occidentalis', 'published', NULL, NULL, '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
-(6, NULL, 'Testphora', NULL, 'work_in_progress', 'Prairie 1', NULL, '2026-10-05 23:49:08', '2026-10-05 23:49:08');
+(6, NULL, 'Testphora', NULL, 'work_in_progress', 'Prairie 1', NULL, '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
+(9, NULL, 'Postmanevidentiophora', 'primary1792713855081', 'published', NULL, 'Disposable primary species for evidence hierarchy test', '2026-10-23 00:04:15', '2026-10-23 00:04:15'),
+(10, NULL, 'Postmanevidentiophora', 'other1792713855081', 'published', NULL, 'Disposable second species for derived-from validation', '2026-10-23 00:04:15', '2026-10-23 00:04:15');
 
 -- --------------------------------------------------------
 
@@ -391,7 +423,11 @@ INSERT INTO `species_descriptions` (`id`, `workspace_id`, `species_id`, `sex_sco
 (2, 1, 2, 'male', NULL, NULL, 'new_interpretation', NULL, NULL, NULL, NULL, NULL, '2026-09-25 22:50:16', '2026-09-25 22:50:16'),
 (4, 2, 4, 'female', 'publication', NULL, 'published', NULL, NULL, 'Temporary published-data diagnosis for Testphora borealis.', 'TEST description.', NULL, '2026-10-05 23:55:31', '2026-10-22 23:35:58'),
 (5, 2, 6, 'female', 'new_observations', NULL, 'new_interpretation', NULL, NULL, 'Temporary diagnosis for Testphora sp. Prairie 1.', 'TEST description based on new observations.', NULL, '2026-10-05 23:55:31', '2026-10-05 23:55:31'),
-(6, 3, 5, 'female', 'mixed', NULL, 'new_interpretation', NULL, NULL, 'Temporary mixed-source diagnosis for Testphora occidentalis.', 'TEST description using published information and new observations.', NULL, '2026-10-05 23:55:31', '2026-10-05 23:55:31');
+(6, 3, 5, 'female', 'mixed', NULL, 'new_interpretation', NULL, NULL, 'Temporary mixed-source diagnosis for Testphora occidentalis.', 'TEST description using published information and new observations.', NULL, '2026-10-05 23:55:31', '2026-10-05 23:55:31'),
+(11, 8, 9, 'female', 'publication', 'POSTMAN 1792713855081 Published interpretation', 'published', 'Historical Author', NULL, 'Published interpretation used for live provenance testing.', 'Disposable.', 'FQuQCTnfiwYVRnhTai66vqnA9L73', '2026-10-23 00:04:16', '2026-10-23 00:04:16'),
+(12, 8, 9, 'female', 'mixed', 'POSTMAN 1792713855081 Alpha interpretation', 'new_interpretation', 'Taxonomist Alpha', 11, 'Alpha taxonomic hypothesis.', 'Must coexist with the published interpretation.', 'FQuQCTnfiwYVRnhTai66vqnA9L73', '2026-10-23 00:04:17', '2026-10-23 00:04:17'),
+(13, 8, 9, 'female', 'mixed', 'POSTMAN 1792713855081 Beta alternative', 'alternative', 'Taxonomist Beta', 11, 'Beta alternative taxonomic hypothesis.', 'Must coexist with the other two interpretations.', 'FQuQCTnfiwYVRnhTai66vqnA9L73', '2026-10-23 00:04:17', '2026-10-23 00:04:17'),
+(14, 8, 10, 'female', 'new_observations', 'POSTMAN 1792713855081 Other species interpretation', 'new_interpretation', 'Taxonomist Gamma', NULL, NULL, NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', '2026-10-23 00:04:17', '2026-10-23 00:04:17');
 
 -- --------------------------------------------------------
 
@@ -414,6 +450,15 @@ CREATE TABLE `specimen_observations` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ;
 
+--
+-- Dumping data for table `specimen_observations`
+--
+
+INSERT INTO `specimen_observations` (`id`, `specimen_reference_id`, `character_id`, `numeric_min`, `numeric_max`, `observation_basis`, `observed_by_uid`, `attribution_text`, `source_publication_id`, `notes`, `created_at`, `updated_at`) VALUES
+(2, 2, 12, NULL, NULL, 'other', 'postman-taxonomist-beta', 'Taxonomist Beta', NULL, 'Beta assertion PATCH verified; must remain an independent assertion.', '2026-10-23 00:04:20', '2026-10-23 00:04:21'),
+(3, 2, 13, 1.730000, 1.730000, 'direct_exam', 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'Taxonomist Alpha', NULL, 'Single-specimen body-length measurement.', '2026-10-23 00:04:20', '2026-10-23 00:04:20'),
+(4, 3, 12, NULL, NULL, 'direct_exam', 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'Taxonomist Alpha', NULL, NULL, '2026-10-23 00:04:21', '2026-10-23 00:04:21');
+
 -- --------------------------------------------------------
 
 --
@@ -427,6 +472,14 @@ CREATE TABLE `specimen_observation_states` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `specimen_observation_states`
+--
+
+INSERT INTO `specimen_observation_states` (`specimen_observation_id`, `character_id`, `state_id`, `created_at`) VALUES
+(2, 12, 20, '2026-10-23 00:04:21'),
+(4, 12, 19, '2026-10-23 00:04:21');
+
 -- --------------------------------------------------------
 
 --
@@ -435,6 +488,7 @@ CREATE TABLE `specimen_observation_states` (
 
 CREATE TABLE `specimen_references` (
   `id` bigint(20) UNSIGNED NOT NULL,
+  `species_id` bigint(20) UNSIGNED DEFAULT NULL,
   `reference_type` enum('gbif','local','publication') NOT NULL,
   `gbif_occurrence_key` bigint(20) UNSIGNED DEFAULT NULL,
   `publication_id` bigint(20) UNSIGNED DEFAULT NULL,
@@ -450,8 +504,10 @@ CREATE TABLE `specimen_references` (
 -- Dumping data for table `specimen_references`
 --
 
-INSERT INTO `specimen_references` (`id`, `reference_type`, `gbif_occurrence_key`, `publication_id`, `institution_code`, `catalog_number`, `specimen_label`, `notes`, `created_at`, `updated_at`) VALUES
-(1, 'local', NULL, NULL, 'TEST', '001', 'Temporary test specimen', 'Temporary record for testing description/specimen relationships.', '2026-10-05 22:23:11', '2026-10-05 22:23:11');
+INSERT INTO `specimen_references` (`id`, `species_id`, `reference_type`, `gbif_occurrence_key`, `publication_id`, `institution_code`, `catalog_number`, `specimen_label`, `notes`, `created_at`, `updated_at`) VALUES
+(1, NULL, 'local', NULL, NULL, 'TEST', '001', 'Temporary test specimen', 'Temporary record for testing description/specimen relationships.', '2026-10-05 22:23:11', '2026-10-05 22:23:11'),
+(2, NULL, 'local', NULL, NULL, 'POSTMAN', '1792713855081-001', 'POSTMAN EVIDENCE 1792713855081 specimen 1', 'Disposable specimen; PATCH verified by Postman.', '2026-10-23 00:04:18', '2026-10-23 00:04:18'),
+(3, NULL, 'local', NULL, NULL, 'POSTMAN', '1792713855081-002', 'POSTMAN EVIDENCE 1792713855081 unlinked specimen', 'Used to prove evidence must come from a specimen associated with the description.', '2026-10-23 00:04:19', '2026-10-23 00:04:19');
 
 -- --------------------------------------------------------
 
@@ -477,7 +533,7 @@ INSERT INTO `workspaces` (`id`, `name`, `description`, `owner_uid`, `visibility`
 (1, 'Myriophora', 'Structured species descriptions and identification data for Myriophora.', NULL, 'private', '2026-09-25 01:13:24', '2026-09-25 01:13:24'),
 (2, 'TEST Canada Revision', 'Temporary Canadian Testphora workspace.', NULL, 'private', '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
 (3, 'TEST USA Revision', 'Temporary United States Testphora workspace.', NULL, 'private', '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
-(4, 'POSTMAN TEST 1792637159301 Workspace', 'Temporary Postman CRUD workspace', 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-10-22 02:45:59', '2026-10-22 02:45:59');
+(8, 'POSTMAN EVIDENCE 1792713855081 Workspace', 'Disposable live integration workspace for specimen-evidence tests', 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-10-23 00:04:15', '2026-10-23 00:04:15');
 
 -- --------------------------------------------------------
 
@@ -504,7 +560,9 @@ INSERT INTO `workspace_characters` (`workspace_id`, `character_id`, `display_ord
 (2, 5, 10, '2026-10-05 23:52:55'),
 (3, 3, 20, '2026-10-05 23:52:55'),
 (3, 4, 30, '2026-10-05 23:52:55'),
-(3, 5, 10, '2026-10-05 23:52:55');
+(3, 5, 10, '2026-10-05 23:52:55'),
+(8, 12, 10, '2026-10-23 00:04:16'),
+(8, 13, 20, '2026-10-23 00:04:16');
 
 -- --------------------------------------------------------
 
@@ -528,7 +586,9 @@ INSERT INTO `workspace_species` (`workspace_id`, `species_id`, `display_order`, 
 (1, 3, 20, '2026-09-25 22:37:33'),
 (2, 4, 10, '2026-10-05 23:52:55'),
 (2, 6, 20, '2026-10-05 23:52:55'),
-(3, 5, 10, '2026-10-05 23:52:55');
+(3, 5, 10, '2026-10-05 23:52:55'),
+(8, 9, 10, '2026-10-23 00:04:15'),
+(8, 10, 20, '2026-10-23 00:04:15');
 
 --
 -- Indexes for dumped tables
@@ -690,7 +750,8 @@ ALTER TABLE `specimen_references`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_specimen_gbif_occurrence` (`gbif_occurrence_key`),
   ADD KEY `idx_specimen_catalog` (`institution_code`,`catalog_number`),
-  ADD KEY `idx_specimen_publication` (`publication_id`);
+  ADD KEY `idx_specimen_publication` (`publication_id`),
+  ADD KEY `idx_specimen_species` (`species_id`);
 
 --
 -- Indexes for table `workspaces`
@@ -722,19 +783,19 @@ ALTER TABLE `workspace_species`
 -- AUTO_INCREMENT for table `characters`
 --
 ALTER TABLE `characters`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `character_observations`
 --
 ALTER TABLE `character_observations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- AUTO_INCREMENT for table `character_states`
 --
 ALTER TABLE `character_states`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `identification_keys`
@@ -752,13 +813,13 @@ ALTER TABLE `publications`
 -- AUTO_INCREMENT for table `species`
 --
 ALTER TABLE `species`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `species_descriptions`
 --
 ALTER TABLE `species_descriptions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `specimen_observations`
@@ -770,13 +831,13 @@ ALTER TABLE `specimen_observations`
 -- AUTO_INCREMENT for table `specimen_references`
 --
 ALTER TABLE `specimen_references`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `workspaces`
 --
 ALTER TABLE `workspaces`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- Constraints for dumped tables
@@ -884,7 +945,8 @@ ALTER TABLE `specimen_observation_states`
 -- Constraints for table `specimen_references`
 --
 ALTER TABLE `specimen_references`
-  ADD CONSTRAINT `fk_specimen_reference_publication` FOREIGN KEY (`publication_id`) REFERENCES `publications` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `fk_specimen_reference_publication` FOREIGN KEY (`publication_id`) REFERENCES `publications` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_specimen_species` FOREIGN KEY (`species_id`) REFERENCES `species` (`id`);
 
 --
 -- Constraints for table `workspace_characters`

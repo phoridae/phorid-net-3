@@ -374,7 +374,7 @@ test("reject invalid bodies, enums, IDs, excessive text, unknown fields and SQL 
 
 const detail = (id = 1) => request("GET", `/descriptions/${id}`, undefined, "admin", readRouter);
 async function createSpecimen() {
-  const result = await request("POST", "/specimen-references", { reference_type: "local", institution_code: "TEST", catalog_number: "001" });
+  const result = await request("POST", "/specimen-references", { species_id: "1", reference_type: "local", institution_code: "TEST", catalog_number: "001" });
   assert.equal(result.status, 201);
   return result.body.id;
 }
@@ -435,13 +435,13 @@ test("description moves require destination membership and compatible synthesize
 
 test("specimen reference CRUD validates fields, preserves string IDs and respects restrictions", async () => {
   await query("INSERT INTO publications (id,citation) VALUES (1,'Source')");
-  const created = await request("POST", "/specimen-references", { reference_type: "gbif", gbif_occurrence_key: "123456", publication_id: "1" });
+  const created = await request("POST", "/specimen-references", { species_id: "1", reference_type: "gbif", gbif_occurrence_key: "123456", publication_id: "1" });
   assert.equal(created.status, 201);
   assert.equal(created.body.gbif_occurrence_key, "123456");
   const id = created.body.id;
   assert.equal((await request("GET", `/specimen-references/${id}`)).body.publication_id, "1");
   assert.equal((await request("PATCH", `/specimen-references/${id}`, { specimen_label: "Voucher" })).body.specimen_label, "Voucher");
-  assert.equal((await request("POST", "/specimen-references", { reference_type: "gbif", gbif_occurrence_key: "123456" })).status, 409);
+  assert.equal((await request("POST", "/specimen-references", { species_id: "1", reference_type: "gbif", gbif_occurrence_key: "123456" })).status, 409);
   assert.equal((await request("POST", "/specimen-references", { reference_type: "invalid" })).status, 400);
   assert.equal((await request("PATCH", `/specimen-references/${id}`, { publication_id: 999 })).status, 404);
   assert.equal((await request("GET", "/specimen-references/999")).status, 404);
@@ -679,4 +679,136 @@ test("key filtering remains based on exact description synthesis despite contrad
   const after = await request("POST", "/1/filter", filters, "admin", keyRouter);
   assert.deepEqual(after.body, before.body);
   assert.equal((await detail()).body.character_observations[0].specimen_evidence[0].states[0].id, "2");
+});
+
+async function createWorkingSpecies() {
+  const response = await request("POST", "/species", {
+    genus: "Apocephalus", specific_epithet: null, species_status: "work_in_progress", working_name: "AZ-17", gbif_taxon_key: "1234567",
+  });
+  assert.equal(response.status, 201);
+  return response.body;
+}
+
+test("specimens accept global working species assignments and return species metadata consistently", async () => {
+  const species = await createWorkingSpecies();
+  const response = await request("POST", "/specimen-references", { species_id: species.id, reference_type: "local", catalog_number: "AZ-17-voucher" });
+  assert.equal(response.status, 201);
+  assert.equal(response.body.species_id, species.id);
+  assert.equal(response.body.species.working_name, "AZ-17");
+  assert.equal(response.body.species.specific_epithet, null);
+  const fetched = await request("GET", `/specimen-references/${response.body.id}`);
+  assert.equal(fetched.status, 200);
+  assert.equal(fetched.body.species.id, species.id);
+  assert.equal(fetched.body.species.gbif_taxon_key, "1234567");
+  assert.equal(fetched.body.species.genus, "Apocephalus");
+  assert.equal(fetched.body.species.species_status, "work_in_progress");
+  assert.equal(Object.hasOwn(fetched.body, "workspace_id"), false);
+  assert.deepEqual(await query("SELECT * FROM workspace_species WHERE species_id = ?", [species.id]), []);
+});
+
+test("specimen assignments validate required IDs, missing species and nulls without changing existing data", async () => {
+  assert.equal((await request("POST", "/specimen-references", { reference_type: "local" })).status, 400);
+  const specimenId = await createSpecimen();
+  for (const value of [null, "0", "-1", "abc", "18446744073709551616", 9007199254740992]) {
+    assert.equal((await request("POST", "/specimen-references", { species_id: value, reference_type: "local" })).status, 400);
+    assert.equal((await request("PATCH", `/specimen-references/${specimenId}`, { species_id: value })).status, 400);
+  }
+  for (const [method, url, body] of [
+    ["POST", "/specimen-references", { species_id: "999", reference_type: "local" }],
+    ["PATCH", `/specimen-references/${specimenId}`, { species_id: "999", notes: "Should roll back" }],
+  ]) {
+    const response = await request(method, url, body);
+    assert.equal(response.status, 404);
+    assert.match(response.body.error, /species.*not found/);
+    assert.doesNotMatch(response.body.error, /FOREIGN KEY|constraint|INSERT|UPDATE/);
+  }
+  const fetched = await request("GET", `/specimen-references/${specimenId}`);
+  assert.equal(fetched.body.species_id, "1");
+  assert.equal(fetched.body.notes, null);
+});
+
+test("legacy nullable assignments remain readable and can acquire a valid current species", async () => {
+  await query("INSERT INTO specimen_references (id, reference_type) VALUES (1,'local')");
+  let fetched = await request("GET", "/specimen-references/1");
+  assert.equal(fetched.body.species_id, null);
+  assert.equal(fetched.body.species, null);
+  await linkSpecimen("1");
+  const raw = await assertObservation("1");
+  await put(1, { state_ids: [1] });
+  await specimenEvidence([raw.id]);
+  const legacyDetail = await detail();
+  assert.equal(legacyDetail.body.specimen_references[0].species, null);
+  assert.equal(legacyDetail.body.character_observations[0].specimen_evidence[0].specimen_reference.species, null);
+  assert.equal((await request("PATCH", "/specimen-references/1", { species_id: "1" })).status, 200);
+  fetched = await request("GET", "/specimen-references/1");
+  assert.equal(fetched.body.species.id, "1");
+});
+
+test("taxonomic reassignment preserves assertions, synthesis, evidence links and historical publications", async () => {
+  const specimenId = await createSpecimen();
+  const species = await createWorkingSpecies();
+  await query("INSERT INTO publications (id,citation) VALUES (1,'Historical assignment and scoring')");
+  await linkSpecimen(specimenId, 1, { reported_material_examined: true, directly_examined: true, notes: "Historical material" });
+  await request("POST", `/descriptions/1/specimens/${specimenId}/publications`, { publication_id: "1" });
+  await request("POST", "/descriptions/1/publications", { publication_id: "1" });
+  const assertion = await assertObservation(specimenId, { state_ids: [2], observation_basis: "publication", source_publication_id: "1", attribution_text: "Original scorer" });
+  await put(1, { state_ids: [1], evidence_basis: "mixed" });
+  await specimenEvidence([assertion.id]);
+  await publicationEvidence(["1"]);
+
+  const tables = ["specimen_observations", "specimen_observation_states", "character_observations", "observation_states",
+    "character_observation_specimen_evidence", "character_observation_publications", "description_specimens",
+    "description_specimen_publications", "description_publications", "publications", "species_descriptions"];
+  const before = await Promise.all(tables.map((table) => query(`SELECT * FROM ${table}`)));
+  const changed = await request("PATCH", `/specimen-references/${specimenId}`, { species_id: species.id });
+  assert.equal(changed.status, 200);
+  assert.equal(changed.body.id, specimenId);
+  assert.equal(changed.body.species_id, species.id);
+  assert.equal(changed.body.species.working_name, "AZ-17");
+  const after = await Promise.all(tables.map((table) => query(`SELECT * FROM ${table}`)));
+  assert.deepEqual(after, before);
+  const response = await detail();
+  assert.equal(response.body.species.id, "1");
+  assert.equal(response.body.specimen_references[0].species_id, species.id);
+  assert.equal(response.body.specimen_references[0].species.working_name, "AZ-17");
+  const evidence = response.body.character_observations[0].specimen_evidence[0];
+  assert.equal(evidence.id, assertion.id);
+  assert.equal(evidence.specimen_reference.species.id, species.id);
+  assert.equal(evidence.states[0].id, "2");
+  assert.equal(evidence.source_publication.citation, "Historical assignment and scoring");
+  const rawResponse = await request("PATCH", `/specimen-observations/${assertion.id}`, { notes: "Only metadata" });
+  assert.equal(rawResponse.body.specimen_reference.species.id, species.id);
+});
+
+test("species deletion is controlled and atomic while specimens are assigned, then works after reassignment/deletion", async () => {
+  const specimenId = await createSpecimen();
+  const species = await createWorkingSpecies();
+  await put(1, { state_ids: [1] });
+  const blocked = await request("DELETE", "/species/1");
+  assert.equal(blocked.status, 409);
+  assert.match(blocked.body.error, /specimens are currently assigned/);
+  assert.doesNotMatch(blocked.body.error, /FOREIGN KEY|constraint|DELETE FROM/);
+  assert.equal((await query("SELECT * FROM species_descriptions")).length, 2);
+  assert.equal((await query("SELECT * FROM character_observations")).length, 1);
+  assert.equal((await request("PATCH", `/specimen-references/${specimenId}`, { species_id: species.id })).status, 200);
+  assert.equal((await request("DELETE", "/species/1")).status, 204);
+  assert.equal((await request("GET", `/specimen-references/${specimenId}`)).body.species_id, species.id);
+  assert.equal((await request("DELETE", `/species/${species.id}`)).status, 409);
+  assert.equal((await request("DELETE", `/specimen-references/${specimenId}`)).status, 204);
+  assert.equal((await request("DELETE", `/species/${species.id}`)).status, 204);
+});
+
+test("GBIF occurrence validation, uniqueness and external IDs are unchanged by specimen reassignment", async () => {
+  const species = await createWorkingSpecies();
+  const created = await request("POST", "/specimen-references", { species_id: "1", reference_type: "gbif", gbif_occurrence_key: "123456789" });
+  assert.equal(created.status, 201);
+  assert.equal(created.body.gbif_occurrence_key, "123456789");
+  assert.equal((await request("POST", "/specimen-references", { species_id: species.id, reference_type: "gbif", gbif_occurrence_key: "123456789" })).status, 409);
+  for (const key of ["0", "abc", "18446744073709551616"]) {
+    assert.equal((await request("PATCH", `/specimen-references/${created.body.id}`, { gbif_occurrence_key: key })).status, 400);
+  }
+  const changed = await request("PATCH", `/specimen-references/${created.body.id}`, { species_id: species.id });
+  assert.equal(changed.body.gbif_occurrence_key, "123456789");
+  assert.equal(changed.body.species.gbif_taxon_key, "1234567");
+  assert.equal((await request("PATCH", `/specimen-references/${created.body.id}`, { gbif_occurrence_key: null })).body.gbif_occurrence_key, null);
 });

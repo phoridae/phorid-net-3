@@ -16,6 +16,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
+import TaxonomyWorkbench from "./pages/TaxonomyWorkbench";
 import GbifCache from './pages/GbifCache';
 import Crisis from './pages/Crisis';
 import About from './pages/About';
@@ -42,6 +43,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/taxonomy"
+            element={
+              <ProtectedRoute>
+                <TaxonomyWorkbench />
               </ProtectedRoute>
             }
           />

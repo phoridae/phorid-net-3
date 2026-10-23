@@ -2,6 +2,12 @@ All routes below are relative to `/api/taxonomy`. They require a Firebase bearer
 token with `admin: true` and use the taxonomy database. Each mutation runs in a
 transaction and responds only after commit. Existing read routes remain available.
 
+Species, specimens, characters/states, and attributed specimen observations are
+global entities. Workspaces select active species/characters and provide the
+originating/editing context for globally discoverable descriptions; a workspace
+is not a visibility boundary. Specimens have no workspace ownership. Keys remain
+products built from exact descriptions and their synthesized character observations.
+
 | Method | Route | Body |
 | --- | --- | --- |
 | POST | `/workspaces` | `name` required; `description`, `owner_uid`, `visibility` optional |
@@ -120,8 +126,8 @@ Specimen evidence endpoints:
 
 | Method | Route | Body / behavior |
 | --- | --- | --- |
-| POST | `/specimen-references` | `reference_type` required; fields below optional |
-| GET | `/specimen-references/:id` | Specimen reference record |
+| POST | `/specimen-references` | `reference_type` and `species_id` required; other fields below optional |
+| GET | `/specimen-references/:id` | Specimen reference record with current species metadata |
 | PATCH | `/specimen-references/:id` | Supplied specimen fields only |
 | DELETE | `/specimen-references/:id` | `204`; description associations restrict deletion with `409` |
 | POST | `/descriptions/:id/specimens` | `specimen_reference_id` required; `reported_material_examined`, `directly_examined`, `notes` optional |
@@ -143,13 +149,57 @@ relationship/duplicate conflict conventions. Specimen-evidence and publication-e
 relationship mismatches return `400`; missing resources return `404`. Replacement
 operations are transactional, deduplicate IDs, and accept empty arrays to clear links.
 
-Specimen reference fields match the schema: `reference_type` (`gbif`, `local`,
+Specimen reference fields match the schema: `species_id`, `reference_type` (`gbif`, `local`,
 `publication`), nullable `gbif_occurrence_key`, `publication_id`, `institution_code`
 (64 characters), `catalog_number` (128), `specimen_label` (255), and `notes` (TEXT).
 Publication IDs must exist when supplied; duplicate GBIF occurrence keys return
 `409`. IDs and occurrence keys serialize as strings. Deleting an unassociated
 specimen cascades its raw observations; a specimen still associated with a
 description cannot be deleted.
+
+Every new specimen must have a current species assignment. POST requires an
+existing `species_id`; PATCH accepts a new `species_id` to change that assignment.
+Malformed, null, zero, or unsafe numeric IDs return `400`. A well-formed ID for a
+missing species returns controlled `404`. PATCH with species_id omitted retains
+the assignment. A species need not belong to any workspace to be assigned to a
+specimen. Working/code-name species are valid, for example:
+
+```json
+{
+  "genus": "Apocephalus",
+  "specific_epithet": null,
+  "species_status": "work_in_progress",
+  "working_name": "AZ-17"
+}
+```
+
+Create that global species with `POST /species`, then use its ID in
+`POST /specimen-references` or PATCH an existing specimen. Assignment updates
+change only the specimen reference record. Specimen observations, synthesized
+character observations, historical publications, description-specimen links, and
+all evidence relationships remain intact. A historical description can therefore
+retain a specimen whose current assignment differs from that description's species.
+No identification history or competing identification assertion is generated.
+
+Specimen POST/PATCH/GET responses include the string `species_id` and a nested
+`species` record containing string `id`/`gbif_taxon_key`, genus, specific epithet,
+species status, and working name, along with other species metadata. The same
+species information appears in description-detail `specimen_references` and nested
+specimen references in raw observation and provenance responses.
+
+Compatibility: the authoritative schema still allows `species_id = NULL`, and
+existing dump records use that value. Legacy specimens remain readable with
+`species_id: null` and `species: null`; metadata PATCH does not implicitly assign
+them. Explicitly PATCH a valid species ID to assign them. New API creates require
+species_id and PATCH rejects clearing it, so existing clients creating specimens
+must supply the assignment. This task does not backfill legacy data or change DDL.
+
+GBIF identity remains independent of the research cache. The taxonomy database
+stores GBIF's own external taxon keys in `species.gbif_taxon_key` and external
+occurrence keys in `specimen_references.gbif_occurrence_key`. The latter keeps
+its existing optional/null, positive-ID validation and uniqueness behavior during
+reassignment. `johnhash_phorid_research` is a rebuildable GBIF snapshot/cache;
+curated taxonomy records never depend on its internal row IDs or foreign keys.
 
 The two examination flags accept JSON booleans, default to false, and are
 independent. `reported_material_examined: true` means reported as material examined
@@ -206,7 +256,7 @@ are never merged or auto-selected.
 `GET /descriptions/:id` preserves the existing response shape and adds:
 
 - Interpretation label/type, attribution, and string/null derivation ID.
-- On each `specimen_references` entry, boolean examination flags, existing
+- On each `specimen_references` entry, current `species_id`/`species`, boolean examination flags, existing
   `association_notes`, and `material_examined_publications` with reporting provenance.
 - On each `character_observations` entry, `evidence_basis`, `publication_evidence`,
   and `specimen_evidence` arrays. Each linked specimen assertion retains its ID,
@@ -228,6 +278,11 @@ Removal rules and errors:
   workspaces, including observations and description evidence associations.
   Workspaces and reusable characters/evidence remain. A key referencing any
   affected description blocks deletion with `409` and rolls back the operation.
+  Specimens currently assigned through `specimen_references.species_id` also
+  block deletion with `409` and a specific JSON error explaining that specimens
+  must be reassigned or deleted first. After that, the usual cascade/key-reference
+  rules apply. The API does not clear assignments or delete specimens to force a
+  species deletion, and it does not return raw MySQL/MariaDB FK errors.
 - `DELETE /characters/:id` cascades character states and workspace character
   memberships. Existing character observations or key character selections
   restrict deletion and return `409`; those references are never removed to

@@ -40,6 +40,16 @@ const AdminDashboard = () => {
               This is a full working snapshot of the phorids on GBIF.
             </Card>
           </Col>
+
+          <Col xs={24} sm={12} md={12} lg={6}>
+            <Card
+              hoverable
+              title="Taxonomy Workbench"
+              onClick={() => navigate("/admin/taxonomy")}
+            >
+              Manage species, specimens, characters, observations, descriptions, and identification keys.
+            </Card>
+          </Col>
         </Row>
       </div>
 
