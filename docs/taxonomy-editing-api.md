@@ -20,7 +20,7 @@ transaction and responds only after commit. Existing read routes remain availabl
 | DELETE | `/workspaces/:id/characters/:characterId` | None |
 | PATCH | `/workspaces/:id/characters` | `character_ids`: all current character IDs, in desired order |
 | POST | `/descriptions` | `workspace_id`, `species_id` required; description fields below optional |
-| PATCH | `/descriptions/:id` | Description fields: `sex_scope`, `basis`, `diagnosis`, `remarks`, `prepared_by_uid` |
+| PATCH | `/descriptions/:id` | Description fields listed below, including workspace/species and interpretation fields |
 | DELETE | `/descriptions/:id` | None |
 | PUT | `/descriptions/:id/observations/:characterId` | Full categorical or numeric observation, as below |
 | DELETE | `/descriptions/:id/observations/:characterId` | None |
@@ -51,9 +51,20 @@ Defaults and validation:
   cannot change while observations exist, to avoid silently reinterpreting data.
 - Descriptions default to `sex_scope: "general"`; `female` and `male` are also
   accepted. `basis` accepts `publication`, `new_observations`, `mixed`, or null.
-  The species must already belong to the workspace. A workspace/species/sex
-  combination is unique. PATCH cannot move a description between species or
-  workspaces.
+  The species must already belong to the workspace. Multiple descriptions of the
+  same workspace/species/sex are legitimate competing interpretations and receive
+  distinct IDs; matching that combination never causes `409`.
+  POST and PATCH accept `workspace_id`, `species_id`, `sex_scope`, `basis`,
+  `interpretation_label`, `interpretation_type`, `attribution_text`,
+  `derived_from_description_id`, `diagnosis`, `remarks`, and `prepared_by_uid`.
+  Interpretation type accepts `published`, `new_interpretation` (default),
+  `alternative`, or `synthesis`, independently of basis. Labels/attribution are
+  nullable strings up to 255 characters. A supplied non-null derivation ID must
+  exist and refer to the same species, otherwise `400`. PATCH can change workspace
+  or species, subject to destination membership and derivation validation.
+  Moving to a workspace missing existing synthesized characters returns `409`;
+  changing species while other same-species interpretations derive from this
+  description returns `409` if it would invalidate those derivations.
 - Membership and state `display_order` defaults to zero and accepts unsigned
   32-bit integers. Reordering requires every current workspace character exactly
   once; it assigns consecutive order values beginning at zero. It neither adds
@@ -69,7 +80,7 @@ Categorical observation replacement:
 PUT /api/taxonomy/descriptions/1/observations/1
 Content-Type: application/json
 
-{"state_ids":["1","2"],"notes":"Both states observed"}
+{"state_ids":["1","2"],"evidence_basis":"taxonomic_judgment","notes":"Both states observed"}
 ```
 
 The character must belong to the description's workspace, and every state must
@@ -98,6 +109,113 @@ keeping its existing ID when present. Omitted `notes` becomes null. DELETE
 removes the observation and its categorical state associations; missing data
 continues to mean unknown, never absent. Observations remain specific to their
 description, workspace, and sex scope.
+These observations are synthesized taxonomic judgments. They accept `evidence_basis`:
+`unspecified`, `specimen`, `publication`, `mixed`, or `taxonomic_judgment`.
+Omitting it retains the existing value on PUT, or defaults to `unspecified` on
+creation. Evidence links never automatically change this field or the score.
+PUT retains the observation ID and its evidence links; DELETE cascades those
+links according to the schema.
+
+Specimen evidence endpoints:
+
+| Method | Route | Body / behavior |
+| --- | --- | --- |
+| POST | `/specimen-references` | `reference_type` required; fields below optional |
+| GET | `/specimen-references/:id` | Specimen reference record |
+| PATCH | `/specimen-references/:id` | Supplied specimen fields only |
+| DELETE | `/specimen-references/:id` | `204`; description associations restrict deletion with `409` |
+| POST | `/descriptions/:id/specimens` | `specimen_reference_id` required; `reported_material_examined`, `directly_examined`, `notes` optional |
+| PATCH | `/descriptions/:id/specimens/:specimenId` | Update either examination flag or `notes` |
+| DELETE | `/descriptions/:id/specimens/:specimenId` | Unlink; schema cascades reporting/evidence links, preserving independent specimen assertions |
+| POST | `/descriptions/:id/specimens/:specimenId/publications` | `publication_id` required |
+| DELETE | `/descriptions/:id/specimens/:specimenId/publications/:publicationId` | Remove reporting publication association |
+| POST | `/specimen-references/:specimenId/observations` | `character_id` and categorical `state_ids` or numeric bounds, plus attribution below |
+| PATCH | `/specimen-observations/:id` | Update values/attribution of this exact assertion; character and specimen are immutable |
+| DELETE | `/specimen-observations/:id` | Remove exact assertion; state/evidence-link rows cascade, synthesized scores remain |
+| POST | `/descriptions/:id/publications` | `publication_id` required, `notes` optional; explicit description association |
+| DELETE | `/descriptions/:id/publications/:publicationId` | Remove association; `409` while synthesis uses it as publication evidence |
+| PUT | `/descriptions/:descriptionId/observations/:characterId/specimen-evidence` | Full replacement: `{"specimen_observation_ids":["1","2"]}` |
+| PUT | `/descriptions/:descriptionId/observations/:characterId/publication-evidence` | Full replacement: `{"publication_ids":["1","2"]}` |
+
+These routes are admin-only and follow the same `201` create, `200` read/update,
+`204` delete, `400` invalid input, `404` missing resource, and controlled `409`
+relationship/duplicate conflict conventions. Specimen-evidence and publication-evidence
+relationship mismatches return `400`; missing resources return `404`. Replacement
+operations are transactional, deduplicate IDs, and accept empty arrays to clear links.
+
+Specimen reference fields match the schema: `reference_type` (`gbif`, `local`,
+`publication`), nullable `gbif_occurrence_key`, `publication_id`, `institution_code`
+(64 characters), `catalog_number` (128), `specimen_label` (255), and `notes` (TEXT).
+Publication IDs must exist when supplied; duplicate GBIF occurrence keys return
+`409`. IDs and occurrence keys serialize as strings. Deleting an unassociated
+specimen cascades its raw observations; a specimen still associated with a
+description cannot be deleted.
+
+The two examination flags accept JSON booleans, default to false, and are
+independent. `reported_material_examined: true` means reported as material examined
+for this interpretation, often in literature; it does not mean individually scored
+or personally examined. `directly_examined: true` means examined in connection
+with this work. Both may be true. Neither flag creates observations. Reporting
+publication links require an existing description-specimen association and an
+existing publication, without implying character scoring.
+
+Specimen observations are independent attributed assertions. POST always creates
+a new ID; multiple assertions of the same specimen and character are allowed.
+For example:
+
+```json
+{
+  "character_id": "1",
+  "state_ids": ["2"],
+  "observation_basis": "publication",
+  "attribution_text": "Smith's interpretation of this specimen",
+  "source_publication_id": "1"
+}
+```
+
+Optional fields are `observation_basis` (`direct_exam`, `publication`, `other`),
+`observed_by_uid` (nullable, 128 characters), `attribution_text` (nullable, 255),
+`source_publication_id` (nullable existing publication), and `notes` (nullable TEXT).
+Default basis is `direct_exam`. On creation, omitted `observed_by_uid` defaults
+to `req.user.uid` only for direct examination. Explicit admin attribution, including
+null UID, is retained. Publication/other observations do not inherit the caller UID.
+On PATCH, omitted fields remain unchanged; explicitly changing basis to `direct_exam`
+from another basis defaults an omitted observer UID to the caller. No other PATCH
+silently changes basis or attribution.
+
+Categorical assertions require state IDs belonging to the character and reject
+numeric fields (including explicit null numeric fields). Numeric assertions require
+`numeric_min` and/or `numeric_max` on creation, use the same DECIMAL bounds and
+ordering rules as synthesis, and reject `state_ids`. PATCH may update metadata alone;
+numeric PATCH retains omitted bounds and validates the resulting full range.
+Categorical PATCH replaces the complete state set when `state_ids` is supplied.
+An empty state set or null numeric bounds represent unknown. Raw observations need
+no workspace membership because they are assertions about specimens, independent
+of descriptions. Character types/units cannot be changed while either raw or
+synthesized observations exist; states in use by either layer cannot be removed.
+
+Specimen-evidence replacement requires an existing synthesized observation, each
+exact specimen observation, matching character IDs, and an existing
+`description_specimens` association for each underlying specimen. Publication-evidence
+replacement requires existing publications already associated with this description
+through `description_publications`. Use the explicit description-publication POST
+route to establish membership. Neither replacement changes states, numeric values,
+attribution, or evidence basis in either observation layer. Competing observations
+are never merged or auto-selected.
+
+`GET /descriptions/:id` preserves the existing response shape and adds:
+
+- Interpretation label/type, attribution, and string/null derivation ID.
+- On each `specimen_references` entry, boolean examination flags, existing
+  `association_notes`, and `material_examined_publications` with reporting provenance.
+- On each `character_observations` entry, `evidence_basis`, `publication_evidence`,
+  and `specimen_evidence` arrays. Each linked specimen assertion retains its ID,
+  values/states, character, specimen reference, basis, observer UID, attribution,
+  source publication, notes, and link metadata.
+
+The existing workspace species read also includes interpretation fields on each
+description. Competing descriptions and assertions remain separate objects. Keys
+continue selecting exact descriptions and filtering only synthesized observations.
 
 Removal rules and errors:
 
@@ -135,8 +253,9 @@ Removal rules and errors:
 - Missing resources/memberships return `404`. State deletion checks the parent
   character. Wrong observation state ownership, missing workspace character
   membership, and invalid bodies return `400`.
-- Duplicate GBIF taxon keys, memberships, state names within a character, and
-  workspace/species/sex descriptions return `409`. Referential conflicts and
+- Duplicate GBIF taxon/occurrence keys, memberships, and state names within a
+  character return `409`. Repeated workspace/species/sex descriptions and repeated
+  specimen/character assertions are allowed. Referential conflicts and
   database deadlock/lock timeout errors also return `409`; the edit rolls back.
   Unexpected failures propagate to the application's `500` error handler.
 
@@ -145,7 +264,7 @@ Review of the existing protections against the authoritative SQL schema:
 | Protection | Resulting behavior |
 | --- | --- |
 | Description species membership | Already checked before insertion; missing workspace or membership returns controlled `404` |
-| Unique workspace/species/sex description | Already enforced by the database unique key; duplicate create or PATCH returns `409` |
+| Competing workspace/species/sex descriptions | Allowed with distinct IDs; no unique constraint or matching-combination conflict |
 | Observation character membership | Already checked through `workspace_characters`; unassigned character returns `400` |
 | Observation type separation | Already checked; categorical/numeric field mixing returns `400` |
 | Categorical state ownership | Already checked; another character's state returns `400`, nonexistent state returns `404` |

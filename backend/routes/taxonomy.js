@@ -1,6 +1,7 @@
 const express = require("express");
 const taxonomyPool = require("../dbTaxonomy");
 const requireAdmin = require("../middleware/requireAdmin");
+const { descriptionProvenance } = require("../services/taxonomyProvenance");
 
 const router = express.Router();
 
@@ -136,6 +137,10 @@ router.get("/workspaces/:id/species", async (req, res, next) => {
             sd.id AS description_id,
             sd.sex_scope AS description_sex_scope,
             sd.basis AS description_basis,
+            sd.interpretation_label AS description_interpretation_label,
+            sd.interpretation_type AS description_interpretation_type,
+            sd.attribution_text AS description_attribution_text,
+            sd.derived_from_description_id AS description_derived_from_description_id,
             sd.diagnosis AS description_diagnosis,
             sd.remarks AS description_remarks,
             sd.prepared_by_uid AS description_prepared_by_uid,
@@ -190,6 +195,10 @@ router.get("/workspaces/:id/species", async (req, res, next) => {
           id: serializeId(row.description_id),
           sex_scope: row.description_sex_scope,
           basis: row.description_basis,
+          interpretation_label: row.description_interpretation_label,
+          interpretation_type: row.description_interpretation_type,
+          attribution_text: row.description_attribution_text,
+          derived_from_description_id: serializeId(row.description_derived_from_description_id),
           diagnosis: row.description_diagnosis,
           remarks: row.description_remarks,
           prepared_by_uid: row.description_prepared_by_uid,
@@ -299,6 +308,10 @@ router.get("/descriptions/:id", async (req, res, next) => {
           sd.id AS description_id,
           sd.sex_scope,
           sd.basis,
+          sd.interpretation_label,
+          sd.interpretation_type,
+          sd.attribution_text,
+          sd.derived_from_description_id,
           sd.diagnosis,
           sd.remarks,
           sd.prepared_by_uid,
@@ -370,6 +383,8 @@ router.get("/descriptions/:id", async (req, res, next) => {
               sr.created_at,
               sr.updated_at,
               ds.notes AS association_notes,
+              ds.reported_material_examined,
+              ds.directly_examined,
               ds.created_at AS association_created_at
             FROM description_specimens ds
             JOIN specimen_references sr ON sr.id = ds.specimen_reference_id
@@ -384,6 +399,7 @@ router.get("/descriptions/:id", async (req, res, next) => {
               co.id AS observation_id,
               co.numeric_min,
               co.numeric_max,
+              co.evidence_basis,
               co.notes AS observation_notes,
               co.created_at AS observation_created_at,
               co.updated_at AS observation_updated_at,
@@ -425,6 +441,7 @@ router.get("/descriptions/:id", async (req, res, next) => {
       ]);
 
     const observationsById = new Map();
+    const provenance = await descriptionProvenance(taxonomyPool, req.params.id);
 
     for (const observationRow of observationRows) {
       const observationId = serializeId(observationRow.observation_id);
@@ -435,6 +452,9 @@ router.get("/descriptions/:id", async (req, res, next) => {
 
         observationsById.set(observationId, {
           id: observationId,
+          evidence_basis: observationRow.evidence_basis,
+          publication_evidence: provenance.observationPublications.get(observationId) || [],
+          specimen_evidence: provenance.observationSpecimens.get(observationId) || [],
           notes: observationRow.observation_notes,
           created_at: observationRow.observation_created_at,
           updated_at: observationRow.observation_updated_at,
@@ -474,6 +494,10 @@ router.get("/descriptions/:id", async (req, res, next) => {
       id: serializeId(row.description_id),
       sex_scope: row.sex_scope,
       basis: row.basis,
+      interpretation_label: row.interpretation_label,
+      interpretation_type: row.interpretation_type,
+      attribution_text: row.attribution_text,
+      derived_from_description_id: serializeId(row.derived_from_description_id),
       diagnosis: row.diagnosis,
       remarks: row.remarks,
       prepared_by_uid: row.prepared_by_uid,
@@ -523,6 +547,9 @@ router.get("/descriptions/:id", async (req, res, next) => {
         created_at: specimen.created_at,
         updated_at: specimen.updated_at,
         association_notes: specimen.association_notes,
+        reported_material_examined: Boolean(specimen.reported_material_examined),
+        directly_examined: Boolean(specimen.directly_examined),
+        material_examined_publications: provenance.materialPublications.get(serializeId(specimen.id)) || [],
         association_created_at: specimen.association_created_at,
       })),
       character_observations: [...observationsById.values()],

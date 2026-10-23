@@ -3,69 +3,50 @@ import json
 import sqlite3
 import sys
 
-SCHEMA = """
-CREATE TABLE workspaces (
- id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT,
- owner_uid TEXT, visibility TEXT DEFAULT 'private', created_at TEXT, updated_at TEXT);
-CREATE TABLE species (
- id INTEGER PRIMARY KEY AUTOINCREMENT, gbif_taxon_key TEXT UNIQUE, genus TEXT NOT NULL,
- specific_epithet TEXT, species_status TEXT DEFAULT 'published', working_name TEXT, notes TEXT);
-CREATE TABLE workspace_species (
- workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
- species_id INTEGER REFERENCES species(id) ON DELETE CASCADE, display_order INTEGER DEFAULT 0,
- PRIMARY KEY(workspace_id, species_id));
-CREATE TABLE characters (
- id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT,
- anatomical_region TEXT, data_type TEXT DEFAULT 'categorical', unit TEXT,
- created_by_uid TEXT, visibility TEXT DEFAULT 'private');
-CREATE TABLE character_states (
- id INTEGER PRIMARY KEY AUTOINCREMENT, character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
- name TEXT NOT NULL, description TEXT, display_order INTEGER DEFAULT 0,
- UNIQUE(character_id, name), UNIQUE(id, character_id));
-CREATE TABLE workspace_characters (
- workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
- character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
- display_order INTEGER DEFAULT 0, PRIMARY KEY(workspace_id, character_id));
-CREATE TABLE species_descriptions (
- id INTEGER PRIMARY KEY AUTOINCREMENT, workspace_id INTEGER, species_id INTEGER,
- sex_scope TEXT DEFAULT 'general', basis TEXT, diagnosis TEXT, remarks TEXT, prepared_by_uid TEXT,
- UNIQUE(workspace_id, species_id, sex_scope),
- FOREIGN KEY(workspace_id, species_id) REFERENCES workspace_species(workspace_id, species_id) ON DELETE CASCADE);
-CREATE TABLE character_observations (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- description_id INTEGER REFERENCES species_descriptions(id) ON DELETE CASCADE,
- character_id INTEGER REFERENCES characters(id), numeric_min NUMERIC, numeric_max NUMERIC, notes TEXT,
- UNIQUE(description_id, character_id), UNIQUE(id, character_id));
-CREATE TABLE observation_states (
- observation_id INTEGER, character_id INTEGER, state_id INTEGER,
- PRIMARY KEY(observation_id, state_id),
- FOREIGN KEY(observation_id, character_id) REFERENCES character_observations(id, character_id) ON DELETE CASCADE,
- FOREIGN KEY(state_id, character_id) REFERENCES character_states(id, character_id));
-CREATE TABLE publications (id INTEGER PRIMARY KEY);
-CREATE TABLE specimen_references (
- id INTEGER PRIMARY KEY, publication_id INTEGER REFERENCES publications(id) ON DELETE SET NULL);
-CREATE TABLE description_publications (
- description_id INTEGER REFERENCES species_descriptions(id) ON DELETE CASCADE,
- publication_id INTEGER REFERENCES publications(id), PRIMARY KEY(description_id, publication_id));
-CREATE TABLE description_specimens (
- description_id INTEGER REFERENCES species_descriptions(id) ON DELETE CASCADE,
- specimen_reference_id INTEGER REFERENCES specimen_references(id), PRIMARY KEY(description_id, specimen_reference_id));
-CREATE TABLE identification_keys (
- id INTEGER PRIMARY KEY, source_publication_id INTEGER REFERENCES publications(id) ON DELETE SET NULL);
-CREATE TABLE key_characters (
- key_id INTEGER REFERENCES identification_keys(id) ON DELETE CASCADE,
- character_id INTEGER REFERENCES characters(id), PRIMARY KEY(key_id, character_id));
-CREATE TABLE key_descriptions (
- key_id INTEGER REFERENCES identification_keys(id) ON DELETE CASCADE,
- description_id INTEGER REFERENCES species_descriptions(id),
- PRIMARY KEY(key_id, description_id));
-INSERT INTO identification_keys VALUES (1,NULL);
+# Read only DDL from the authoritative schema; never load production dump data.
+# SQLite adapts types/locking but preserves actual columns, enums, defaults,
+# composite unique keys, and FK actions (including competing interpretations).
+import re
+from pathlib import Path
+
+source = (Path(__file__).resolve().parents[3] / 'db/schema/johnhash_phorid_taxonomy.sql').read_text()
+statements = []
+for table, definition in re.findall(r'CREATE TABLE `(\w+)` \(\n([\s\S]*?)\n\)', source):
+    alters = '\n'.join(re.findall(r'ALTER TABLE `' + table + r'`\s+([\s\S]*?);', source))
+    auto_id = bool(re.search(r'MODIFY `id`[^;]*AUTO_INCREMENT', alters))
+    columns = []
+    for line in definition.strip().splitlines():
+        column = line.strip().rstrip(',')
+        name = re.match(r'`(\w+)`', column).group(1)
+        enum = re.search(r"enum\(([^)]+)\)", column)
+        column = re.sub(r'enum\([^)]+\)', 'TEXT', column)
+        column = re.sub(r'bigint\(\d+\) UNSIGNED', 'INTEGER', column)
+        column = re.sub(r'(?:tinyint|int)\(\d+\)(?: UNSIGNED)?', 'INTEGER', column)
+        column = re.sub(r'decimal\(\d+,\d+\)', 'NUMERIC', column)
+        column = re.sub(r'varchar\(\d+\)|\btimestamp\b', 'TEXT', column)
+        column = column.replace(' ON UPDATE current_timestamp()', '').replace('current_timestamp()', 'CURRENT_TIMESTAMP')
+        if name == 'id' and auto_id:
+            column = '`id` INTEGER PRIMARY KEY AUTOINCREMENT'
+        if enum:
+            column += ' CHECK (`' + name + '` IN (' + enum.group(1) + '))'
+        columns.append(column)
+    for primary in re.findall(r'ADD PRIMARY KEY (\([^)]+\))', alters):
+        if not auto_id:
+            columns.append('PRIMARY KEY ' + primary)
+    for unique in re.findall(r'ADD UNIQUE KEY `[^`]+` (\([^)]+\))', alters):
+        columns.append('UNIQUE ' + unique)
+    for foreign in re.findall(r'FOREIGN KEY \([^)]+\) REFERENCES `[^`]+` \([^)]+\)(?: ON DELETE (?:CASCADE|SET NULL))?', alters):
+        columns.append(foreign)
+    statements.append('CREATE TABLE `' + table + '` (' + ',\n'.join(columns) + ');')
+
+SCHEMA = '\n'.join(statements) + """
+INSERT INTO identification_keys(id,name) VALUES (1,'Fixture key');
 INSERT INTO workspaces(id,name) VALUES (1,'Canada'), (2,'USA');
 INSERT INTO species(id,genus,specific_epithet) VALUES (1,'Testphora','alpha');
-INSERT INTO workspace_species VALUES (1,1,0), (2,1,0);
+INSERT INTO workspace_species(workspace_id,species_id,display_order) VALUES (1,1,0), (2,1,0);
 INSERT INTO characters(id,name,data_type,unit) VALUES (1,'Setae','categorical',NULL), (2,'Length','numeric_range','mm'), (3,'Color','categorical',NULL);
 INSERT INTO character_states(id,character_id,name) VALUES (1,1,'Bare'), (2,1,'Setose'), (3,3,'Yellow');
-INSERT INTO workspace_characters VALUES (1,1,0), (1,2,1), (2,1,0);
+INSERT INTO workspace_characters(workspace_id,character_id,display_order) VALUES (1,1,0), (1,2,1), (2,1,0);
 INSERT INTO species_descriptions(id,workspace_id,species_id,sex_scope) VALUES (1,1,1,'female'), (2,2,1,'female');
 """
 

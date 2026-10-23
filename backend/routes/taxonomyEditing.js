@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../dbTaxonomy");
 const requireAdmin = require("../middleware/requireAdmin");
+const { specimenObservations } = require("../services/taxonomyProvenance");
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -16,7 +17,7 @@ function identifier(value) {
   if (!validId(value)) fail(400, "IDs must be positive unsigned BIGINTs; use strings for large IDs");
   return String(value);
 }
-for (const name of ["id", "speciesId", "characterId", "stateId"]) {
+for (const name of ["id", "speciesId", "characterId", "stateId", "specimenId", "publicationId", "descriptionId"]) {
   router.param(name, (req, res, next, value) => {
     try { identifier(value); next(); } catch (error) { res.status(error.status).json({ error: error.message }); }
   });
@@ -50,8 +51,13 @@ const characterFields = {
   data_type: choice(["categorical", "numeric_range"]), unit: text(64), visibility,
 };
 const descriptionFields = {
+  workspace_id: identifier, species_id: identifier,
   sex_scope: choice(["general", "female", "male"]),
   basis: choice(["publication", "new_observations", "mixed"], true),
+  interpretation_label: text(255),
+  interpretation_type: choice(["published", "new_interpretation", "alternative", "synthesis"]),
+  attribution_text: text(255),
+  derived_from_description_id: (v) => v === null ? null : identifier(v),
   diagnosis: text(65535), remarks: text(65535), prepared_by_uid: text(128),
 };
 
@@ -69,7 +75,7 @@ function body(req, fields, required = []) {
 
 function serialize(row) {
   return Object.fromEntries(Object.entries(row).map(([key, value]) => [key,
-    value != null && (key === "id" || key.endsWith("_id") || key === "gbif_taxon_key") ? String(value) : value,
+    value != null && (key === "id" || key.endsWith("_id") || key.endsWith("_key")) ? String(value) : value,
   ]));
 }
 async function rows(db, sql, params = []) { return (await db.query(sql, params))[0]; }
@@ -183,10 +189,12 @@ router.patch("/characters/:id", mutation(async (req, db) => {
   const type = values.data_type || character.data_type;
   if (type === "categorical" && (Object.hasOwn(values, "unit") ? values.unit : character.unit) != null) fail(400, "Categorical characters cannot have units");
   if (type !== character.data_type) {
+    await conflictIf(db, "SELECT id FROM specimen_observations WHERE character_id = ? LIMIT 1", [req.params.id], "Cannot change type of a specimen-observed character");
     await conflictIf(db, "SELECT id FROM character_observations WHERE character_id = ? LIMIT 1", [req.params.id], "Cannot change type of an observed character");
     await conflictIf(db, "SELECT id FROM character_states WHERE character_id = ? LIMIT 1", [req.params.id], "Remove character states before changing data_type");
   }
   if (Object.hasOwn(values, "unit") && values.unit !== character.unit) {
+    await conflictIf(db, "SELECT id FROM specimen_observations WHERE character_id = ? LIMIT 1", [req.params.id], "Cannot change units of a specimen-observed character");
     await conflictIf(db, "SELECT id FROM character_observations WHERE character_id = ? LIMIT 1", [req.params.id], "Cannot change units of an observed character");
   }
   return update(db, "characters", req.params.id, values);
@@ -202,6 +210,7 @@ router.delete("/characters/:id/states/:stateId", mutation(async (req, db) => {
   const state = await find(db, "character_states", req.params.stateId);
   if (String(state.character_id) !== req.params.id) fail(404, "State not found for character");
   await conflictIf(db, "SELECT observation_id FROM observation_states WHERE state_id = ? LIMIT 1", [req.params.stateId], "State is used by observations");
+  await conflictIf(db, "SELECT specimen_observation_id FROM specimen_observation_states WHERE state_id = ? LIMIT 1", [req.params.stateId], "State is used by specimen observations");
   await db.query("DELETE FROM character_states WHERE id = ?", [req.params.stateId]);
 }, 204));
 
@@ -238,15 +247,32 @@ router.patch("/workspaces/:id/characters", mutation(async (req, db) => {
   return { workspace_id: req.params.id, character_ids: values.character_ids };
 }));
 
-router.post("/descriptions", mutation(async (req, db) => {
-  const values = body(req, { workspace_id: identifier, species_id: identifier, ...descriptionFields }, ["workspace_id", "species_id"]);
+async function validateDescription(db, values) {
   await find(db, "workspaces", values.workspace_id);
   if (!(await rows(db, "SELECT species_id FROM workspace_species WHERE workspace_id = ? AND species_id = ? FOR UPDATE", [values.workspace_id, values.species_id])).length) fail(404, "Species is not a member of this workspace");
+  if (values.derived_from_description_id != null) {
+    const [source] = await rows(db, "SELECT species_id FROM species_descriptions WHERE id = ? FOR UPDATE", [values.derived_from_description_id]);
+    if (!source || String(source.species_id) !== String(values.species_id)) fail(400, "derived_from_description_id must reference an existing description of the same species");
+  }
+}
+router.post("/descriptions", mutation(async (req, db) => {
+  const values = body(req, descriptionFields, ["workspace_id", "species_id"]);
+  await validateDescription(db, values);
   return insert(db, "species_descriptions", { prepared_by_uid: req.user.uid, ...values });
 }, 201));
 router.patch("/descriptions/:id", mutation(async (req, db) => {
   const values = body(req, descriptionFields);
-  await find(db, "species_descriptions", req.params.id);
+  const current = await find(db, "species_descriptions", req.params.id);
+  const combined = { ...current, ...values };
+  await validateDescription(db, combined);
+  if (String(combined.species_id) !== String(current.species_id)) {
+    await conflictIf(db, "SELECT id FROM species_descriptions WHERE derived_from_description_id = ? AND species_id <> ? LIMIT 1", [req.params.id, combined.species_id], "Other interpretations derive from this description for a different species");
+  }
+  if (String(combined.workspace_id) !== String(current.workspace_id)) {
+    await conflictIf(db, `SELECT co.id FROM character_observations co WHERE co.description_id = ?
+      AND NOT EXISTS (SELECT 1 FROM workspace_characters wc WHERE wc.workspace_id = ? AND wc.character_id = co.character_id) LIMIT 1`,
+    [req.params.id, combined.workspace_id], "Destination workspace is missing observed characters");
+  }
   return update(db, "species_descriptions", req.params.id, values);
 }));
 
@@ -273,6 +299,7 @@ router.put("/descriptions/:id/observations/:characterId", mutation(async (req, d
       return [...new Set(value.map(identifier))];
     },
     numeric_min: numericBound, numeric_max: numericBound, notes: text(65535),
+    evidence_basis: choice(["unspecified", "specimen", "publication", "mixed", "taxonomic_judgment"]),
   });
   const character = await observationContext(db, req.params.id, req.params.characterId, true);
   if (character.data_type === "categorical") {
@@ -287,7 +314,8 @@ router.put("/descriptions/:id/observations/:characterId", mutation(async (req, d
   }
   const params = [req.params.id, req.params.characterId];
   const [existing] = await rows(db, "SELECT * FROM character_observations WHERE description_id = ? AND character_id = ? FOR UPDATE", params);
-  const observationValues = { numeric_min: values.numeric_min ?? null, numeric_max: values.numeric_max ?? null, notes: values.notes ?? null };
+  const observationValues = { numeric_min: values.numeric_min ?? null, numeric_max: values.numeric_max ?? null, notes: values.notes ?? null,
+    evidence_basis: values.evidence_basis ?? existing?.evidence_basis ?? "unspecified" };
   const observation = existing
     ? await update(db, "character_observations", existing.id, observationValues)
     : await insert(db, "character_observations", { description_id: req.params.id, character_id: req.params.characterId, ...observationValues });
@@ -302,5 +330,202 @@ router.delete("/descriptions/:id/observations/:characterId", mutation(async (req
   const result = await rows(db, "DELETE FROM character_observations WHERE description_id = ? AND character_id = ?", [req.params.id, req.params.characterId]);
   if (!result.affectedRows) fail(404, "Observation not found");
 }, 204));
+
+const nullableId = (value) => value === null ? null : identifier(value);
+const boolean = (value) => {
+  if (typeof value !== "boolean") fail(400, "Expected a JSON boolean");
+  return value;
+};
+const idList = (value) => {
+  if (!Array.isArray(value)) fail(400, "Expected an array of IDs");
+  return [...new Set(value.map(identifier))];
+};
+const specimenFields = {
+  reference_type: choice(["gbif", "local", "publication"]),
+  gbif_occurrence_key: nullableId, publication_id: nullableId,
+  institution_code: text(64), catalog_number: text(128), specimen_label: text(255), notes: text(65535),
+};
+async function validatePublication(db, publicationId) {
+  if (publicationId != null) await find(db, "publications", publicationId);
+}
+router.post("/specimen-references", mutation(async (req, db) => {
+  const values = body(req, specimenFields, ["reference_type"]);
+  await validatePublication(db, values.publication_id);
+  return insert(db, "specimen_references", values);
+}, 201));
+router.get("/specimen-references/:id", async (req, res, next) => {
+  try {
+    const [specimen] = await rows(pool, "SELECT * FROM specimen_references WHERE id = ?", [req.params.id]);
+    if (!specimen) return res.status(404).json({ error: "Specimen reference not found" });
+    res.json(serialize(specimen));
+  } catch (error) { next(error); }
+});
+router.patch("/specimen-references/:id", mutation(async (req, db) => {
+  const values = body(req, specimenFields);
+  await find(db, "specimen_references", req.params.id);
+  await validatePublication(db, values.publication_id);
+  return update(db, "specimen_references", req.params.id, values);
+}));
+router.delete("/specimen-references/:id", mutation(async (req, db) => {
+  await find(db, "specimen_references", req.params.id);
+  await db.query("DELETE FROM specimen_references WHERE id = ?", [req.params.id]);
+}, 204, "Cannot delete specimen reference: it is linked to a description"));
+
+const specimenLinkFields = { reported_material_examined: boolean, directly_examined: boolean, notes: text(65535) };
+async function specimenLink(db, descriptionId, specimenId) {
+  await find(db, "species_descriptions", descriptionId);
+  const [link] = await rows(db, "SELECT * FROM description_specimens WHERE description_id = ? AND specimen_reference_id = ? FOR UPDATE", [descriptionId, specimenId]);
+  if (!link) fail(404, "Description specimen association not found");
+  return link;
+}
+function serializeSpecimenLink(link) {
+  return { ...serialize(link), reported_material_examined: Boolean(link.reported_material_examined), directly_examined: Boolean(link.directly_examined) };
+}
+router.post("/descriptions/:id/specimens", mutation(async (req, db) => {
+  const values = body(req, { specimen_reference_id: identifier, ...specimenLinkFields }, ["specimen_reference_id"]);
+  await find(db, "species_descriptions", req.params.id);
+  await find(db, "specimen_references", values.specimen_reference_id);
+  await db.query(`INSERT INTO description_specimens
+    (description_id, specimen_reference_id, reported_material_examined, directly_examined, notes) VALUES (?, ?, ?, ?, ?)`,
+  [req.params.id, values.specimen_reference_id, values.reported_material_examined ?? false, values.directly_examined ?? false, values.notes ?? null]);
+  return serializeSpecimenLink(await specimenLink(db, req.params.id, values.specimen_reference_id));
+}, 201));
+router.patch("/descriptions/:id/specimens/:specimenId", mutation(async (req, db) => {
+  const values = body(req, specimenLinkFields);
+  await specimenLink(db, req.params.id, req.params.specimenId);
+  await db.query(`UPDATE description_specimens SET ${Object.keys(values).map((key) => `${key} = ?`).join(", ")}
+    WHERE description_id = ? AND specimen_reference_id = ?`, [...Object.values(values), req.params.id, req.params.specimenId]);
+  return serializeSpecimenLink(await specimenLink(db, req.params.id, req.params.specimenId));
+}));
+router.delete("/descriptions/:id/specimens/:specimenId", mutation(async (req, db) => {
+  await specimenLink(db, req.params.id, req.params.specimenId);
+  await db.query("DELETE FROM description_specimens WHERE description_id = ? AND specimen_reference_id = ?", [req.params.id, req.params.specimenId]);
+}, 204));
+router.post("/descriptions/:id/specimens/:specimenId/publications", mutation(async (req, db) => {
+  const values = body(req, { publication_id: identifier }, ["publication_id"]);
+  await specimenLink(db, req.params.id, req.params.specimenId);
+  await find(db, "publications", values.publication_id);
+  await db.query("INSERT INTO description_specimen_publications (description_id, specimen_reference_id, publication_id) VALUES (?, ?, ?)",
+    [req.params.id, req.params.specimenId, values.publication_id]);
+  return { description_id: req.params.id, specimen_reference_id: req.params.specimenId, ...values };
+}, 201));
+router.delete("/descriptions/:id/specimens/:specimenId/publications/:publicationId", mutation(async (req, db) => {
+  await specimenLink(db, req.params.id, req.params.specimenId);
+  const result = await rows(db, "DELETE FROM description_specimen_publications WHERE description_id = ? AND specimen_reference_id = ? AND publication_id = ?", [req.params.id, req.params.specimenId, req.params.publicationId]);
+  if (!result.affectedRows) fail(404, "Material-examined publication association not found");
+}, 204));
+
+// Explicit description-publication membership makes publication-evidence
+// prerequisites manageable without silently creating associations.
+router.post("/descriptions/:id/publications", mutation(async (req, db) => {
+  const values = body(req, { publication_id: identifier, notes: text(65535) }, ["publication_id"]);
+  await find(db, "species_descriptions", req.params.id);
+  await find(db, "publications", values.publication_id);
+  await db.query("INSERT INTO description_publications (description_id, publication_id, notes) VALUES (?, ?, ?)", [req.params.id, values.publication_id, values.notes ?? null]);
+  return { description_id: req.params.id, ...values };
+}, 201));
+router.delete("/descriptions/:id/publications/:publicationId", mutation(async (req, db) => {
+  await find(db, "species_descriptions", req.params.id);
+  await conflictIf(db, `SELECT cop.character_observation_id FROM character_observation_publications cop
+    JOIN character_observations co ON co.id = cop.character_observation_id
+    WHERE co.description_id = ? AND cop.publication_id = ? LIMIT 1`, [req.params.id, req.params.publicationId], "Publication is used as synthesized observation evidence");
+  const result = await rows(db, "DELETE FROM description_publications WHERE description_id = ? AND publication_id = ?", [req.params.id, req.params.publicationId]);
+  if (!result.affectedRows) fail(404, "Description publication association not found");
+}, 204));
+
+const specimenObservationFields = {
+  state_ids: idList, numeric_min: numericBound, numeric_max: numericBound,
+  observation_basis: choice(["direct_exam", "publication", "other"]),
+  observed_by_uid: text(128), attribution_text: text(255), source_publication_id: nullableId, notes: text(65535),
+};
+async function validateObservationValues(db, character, values, requireValues) {
+  const states = Object.hasOwn(values, "state_ids");
+  const numeric = Object.hasOwn(values, "numeric_min") || Object.hasOwn(values, "numeric_max");
+  if (character.data_type === "categorical") {
+    if (numeric || (requireValues && !states)) fail(400, "Categorical observations require state_ids and cannot contain numeric bounds");
+    for (const stateId of values.state_ids || []) {
+      const state = await find(db, "character_states", stateId);
+      if (String(state.character_id) !== String(character.id)) fail(400, "State does not belong to character");
+    }
+  } else {
+    if (states || (requireValues && !numeric)) fail(400, "Numeric observations require numeric bounds and cannot contain state_ids");
+    if (values.numeric_min != null && values.numeric_max != null && values.numeric_min > values.numeric_max) fail(400, "numeric_min must be <= numeric_max");
+  }
+}
+async function replaceSpecimenStates(db, observation, stateIds) {
+  await db.query("DELETE FROM specimen_observation_states WHERE specimen_observation_id = ?", [observation.id]);
+  for (const stateId of stateIds) {
+    await db.query("INSERT INTO specimen_observation_states (specimen_observation_id, character_id, state_id) VALUES (?, ?, ?)", [observation.id, observation.character_id, stateId]);
+  }
+}
+router.post("/specimen-references/:specimenId/observations", mutation(async (req, db) => {
+  const { state_ids, ...values } = body(req, { character_id: identifier, ...specimenObservationFields }, ["character_id"]);
+  await find(db, "specimen_references", req.params.specimenId);
+  const character = await find(db, "characters", values.character_id);
+  await validateObservationValues(db, character, { ...values, ...(state_ids !== undefined ? { state_ids } : {}) }, true);
+  await validatePublication(db, values.source_publication_id);
+  if ((values.observation_basis || "direct_exam") === "direct_exam" && !Object.hasOwn(values, "observed_by_uid")) values.observed_by_uid = req.user.uid;
+  const observation = await insert(db, "specimen_observations", { ...values, specimen_reference_id: req.params.specimenId });
+  if (state_ids !== undefined) await replaceSpecimenStates(db, observation, state_ids);
+  return (await specimenObservations(db, [observation.id]))[0];
+}, 201));
+router.patch("/specimen-observations/:id", mutation(async (req, db) => {
+  const { state_ids, ...values } = body(req, specimenObservationFields);
+  const existing = await find(db, "specimen_observations", req.params.id);
+  const character = await find(db, "characters", existing.character_id);
+  await validateObservationValues(db, character, {
+    ...(character.data_type === "numeric_range" ? { numeric_min: existing.numeric_min == null ? null : Number(existing.numeric_min), numeric_max: existing.numeric_max == null ? null : Number(existing.numeric_max) } : {}),
+    ...values, ...(state_ids !== undefined ? { state_ids } : {}),
+  }, false);
+  await validatePublication(db, values.source_publication_id);
+  if (values.observation_basis === "direct_exam" && existing.observation_basis !== "direct_exam" && !Object.hasOwn(values, "observed_by_uid")) values.observed_by_uid = req.user.uid;
+  if (Object.keys(values).length) await update(db, "specimen_observations", req.params.id, values);
+  if (state_ids !== undefined) await replaceSpecimenStates(db, existing, state_ids);
+  return (await specimenObservations(db, [req.params.id]))[0];
+}));
+router.delete("/specimen-observations/:id", mutation(async (req, db) => {
+  await find(db, "specimen_observations", req.params.id);
+  await db.query("DELETE FROM specimen_observations WHERE id = ?", [req.params.id]);
+}, 204));
+
+async function synthesis(db, descriptionId, characterId) {
+  await find(db, "species_descriptions", descriptionId);
+  const [observation] = await rows(db, "SELECT * FROM character_observations WHERE description_id = ? AND character_id = ? FOR UPDATE", [descriptionId, characterId]);
+  if (!observation) fail(404, "Description-level character observation not found");
+  return observation;
+}
+router.put("/descriptions/:descriptionId/observations/:characterId/specimen-evidence", mutation(async (req, db) => {
+  const values = body(req, { specimen_observation_ids: idList }, ["specimen_observation_ids"]);
+  const observation = await synthesis(db, req.params.descriptionId, req.params.characterId);
+  const evidence = [];
+  for (const observationId of values.specimen_observation_ids) {
+    const assertion = await find(db, "specimen_observations", observationId);
+    if (String(assertion.character_id) !== req.params.characterId) fail(400, "Specimen observation concerns a different character");
+    const [link] = await rows(db, "SELECT specimen_reference_id FROM description_specimens WHERE description_id = ? AND specimen_reference_id = ? FOR UPDATE", [req.params.descriptionId, assertion.specimen_reference_id]);
+    if (!link) fail(400, "Specimen is not associated with this description");
+    evidence.push(assertion);
+  }
+  await db.query("DELETE FROM character_observation_specimen_evidence WHERE character_observation_id = ?", [observation.id]);
+  for (const assertion of evidence) {
+    await db.query(`INSERT INTO character_observation_specimen_evidence
+      (character_observation_id, description_id, specimen_reference_id, specimen_observation_id, character_id) VALUES (?, ?, ?, ?, ?)`,
+    [observation.id, req.params.descriptionId, assertion.specimen_reference_id, assertion.id, req.params.characterId]);
+  }
+  return { character_observation_id: String(observation.id), ...values };
+}));
+router.put("/descriptions/:descriptionId/observations/:characterId/publication-evidence", mutation(async (req, db) => {
+  const values = body(req, { publication_ids: idList }, ["publication_ids"]);
+  const observation = await synthesis(db, req.params.descriptionId, req.params.characterId);
+  for (const publicationId of values.publication_ids) {
+    await find(db, "publications", publicationId);
+    const [link] = await rows(db, "SELECT publication_id FROM description_publications WHERE description_id = ? AND publication_id = ? FOR UPDATE", [req.params.descriptionId, publicationId]);
+    if (!link) fail(400, "Publication must already be associated with this description");
+  }
+  await db.query("DELETE FROM character_observation_publications WHERE character_observation_id = ?", [observation.id]);
+  for (const publicationId of values.publication_ids) {
+    await db.query("INSERT INTO character_observation_publications (character_observation_id, publication_id) VALUES (?, ?)", [observation.id, publicationId]);
+  }
+  return { character_observation_id: String(observation.id), ...values };
+}));
 
 module.exports = router;

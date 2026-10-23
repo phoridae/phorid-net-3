@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Oct 20, 2026 at 04:36 PM
+-- Generation Time: Oct 22, 2026 at 04:39 PM
 -- Server version: 10.5.25-MariaDB-cll-lve
 -- PHP Version: 8.1.34
 
@@ -63,6 +63,7 @@ CREATE TABLE `character_observations` (
   `character_id` bigint(20) UNSIGNED NOT NULL,
   `numeric_min` decimal(12,6) DEFAULT NULL,
   `numeric_max` decimal(12,6) DEFAULT NULL,
+  `evidence_basis` enum('unspecified','specimen','publication','mixed','taxonomic_judgment') NOT NULL DEFAULT 'unspecified',
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -72,18 +73,47 @@ CREATE TABLE `character_observations` (
 -- Dumping data for table `character_observations`
 --
 
-INSERT INTO `character_observations` (`id`, `description_id`, `character_id`, `numeric_min`, `numeric_max`, `notes`, `created_at`, `updated_at`) VALUES
-(1, 1, 2, 1.540000, 1.930000, NULL, '2026-09-25 23:12:29', '2026-09-25 23:12:29'),
-(2, 1, 1, NULL, NULL, NULL, '2026-09-25 23:13:21', '2026-09-25 23:13:21'),
-(3, 4, 3, NULL, NULL, NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
-(4, 4, 4, NULL, NULL, NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
-(5, 5, 3, NULL, NULL, NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
-(6, 5, 4, NULL, NULL, NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
-(7, 6, 3, NULL, NULL, NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
-(8, 6, 4, NULL, NULL, NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
-(9, 4, 5, 1.500000, 1.800000, NULL, '2026-10-06 00:03:06', '2026-10-06 00:03:06'),
-(10, 5, 5, 1.700000, 2.000000, NULL, '2026-10-06 00:03:06', '2026-10-06 00:03:06'),
-(11, 6, 5, 1.600000, 1.900000, NULL, '2026-10-06 00:03:06', '2026-10-06 00:03:06');
+INSERT INTO `character_observations` (`id`, `description_id`, `character_id`, `numeric_min`, `numeric_max`, `evidence_basis`, `notes`, `created_at`, `updated_at`) VALUES
+(1, 1, 2, 1.540000, 1.930000, 'unspecified', NULL, '2026-09-25 23:12:29', '2026-09-25 23:12:29'),
+(2, 1, 1, NULL, NULL, 'unspecified', NULL, '2026-09-25 23:13:21', '2026-09-25 23:13:21'),
+(3, 4, 3, NULL, NULL, 'unspecified', NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
+(4, 4, 4, NULL, NULL, 'unspecified', NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
+(5, 5, 3, NULL, NULL, 'unspecified', NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
+(6, 5, 4, NULL, NULL, 'unspecified', NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
+(7, 6, 3, NULL, NULL, 'unspecified', NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
+(8, 6, 4, NULL, NULL, 'unspecified', NULL, '2026-10-06 00:02:32', '2026-10-06 00:02:32'),
+(9, 4, 5, 1.500000, 1.800000, 'unspecified', NULL, '2026-10-06 00:03:06', '2026-10-06 00:03:06'),
+(10, 5, 5, 1.700000, 2.000000, 'unspecified', NULL, '2026-10-06 00:03:06', '2026-10-06 00:03:06'),
+(11, 6, 5, 1.600000, 1.900000, 'unspecified', NULL, '2026-10-06 00:03:06', '2026-10-06 00:03:06');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `character_observation_publications`
+--
+
+CREATE TABLE `character_observation_publications` (
+  `character_observation_id` bigint(20) UNSIGNED NOT NULL,
+  `publication_id` bigint(20) UNSIGNED NOT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `character_observation_specimen_evidence`
+--
+
+CREATE TABLE `character_observation_specimen_evidence` (
+  `character_observation_id` bigint(20) UNSIGNED NOT NULL,
+  `description_id` bigint(20) UNSIGNED NOT NULL,
+  `specimen_reference_id` bigint(20) UNSIGNED NOT NULL,
+  `specimen_observation_id` bigint(20) UNSIGNED NOT NULL,
+  `character_id` bigint(20) UNSIGNED NOT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -146,6 +176,8 @@ INSERT INTO `description_publications` (`description_id`, `publication_id`, `not
 CREATE TABLE `description_specimens` (
   `description_id` bigint(20) UNSIGNED NOT NULL,
   `specimen_reference_id` bigint(20) UNSIGNED NOT NULL,
+  `reported_material_examined` tinyint(1) NOT NULL DEFAULT 0,
+  `directly_examined` tinyint(1) NOT NULL DEFAULT 0,
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -154,8 +186,22 @@ CREATE TABLE `description_specimens` (
 -- Dumping data for table `description_specimens`
 --
 
-INSERT INTO `description_specimens` (`description_id`, `specimen_reference_id`, `notes`, `created_at`) VALUES
-(1, 1, 'Temporary specimen association for testing.', '2026-10-05 22:24:07');
+INSERT INTO `description_specimens` (`description_id`, `specimen_reference_id`, `reported_material_examined`, `directly_examined`, `notes`, `created_at`) VALUES
+(1, 1, 0, 0, 'Temporary specimen association for testing.', '2026-10-05 22:24:07');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `description_specimen_publications`
+--
+
+CREATE TABLE `description_specimen_publications` (
+  `description_id` bigint(20) UNSIGNED NOT NULL,
+  `specimen_reference_id` bigint(20) UNSIGNED NOT NULL,
+  `publication_id` bigint(20) UNSIGNED NOT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -325,6 +371,10 @@ CREATE TABLE `species_descriptions` (
   `species_id` bigint(20) UNSIGNED NOT NULL,
   `sex_scope` enum('general','female','male') NOT NULL DEFAULT 'general',
   `basis` enum('publication','new_observations','mixed') DEFAULT NULL,
+  `interpretation_label` varchar(255) DEFAULT NULL,
+  `interpretation_type` enum('published','new_interpretation','alternative','synthesis') NOT NULL DEFAULT 'new_interpretation',
+  `attribution_text` varchar(255) DEFAULT NULL,
+  `derived_from_description_id` bigint(20) UNSIGNED DEFAULT NULL,
   `diagnosis` text DEFAULT NULL,
   `remarks` text DEFAULT NULL,
   `prepared_by_uid` varchar(128) DEFAULT NULL,
@@ -336,12 +386,46 @@ CREATE TABLE `species_descriptions` (
 -- Dumping data for table `species_descriptions`
 --
 
-INSERT INTO `species_descriptions` (`id`, `workspace_id`, `species_id`, `sex_scope`, `basis`, `diagnosis`, `remarks`, `prepared_by_uid`, `created_at`, `updated_at`) VALUES
-(1, 1, 2, 'female', NULL, 'Temporary diagnosis for testing.', 'Temporary description record.', NULL, '2026-09-25 22:49:16', '2026-09-25 22:49:16'),
-(2, 1, 2, 'male', NULL, NULL, NULL, NULL, '2026-09-25 22:50:16', '2026-09-25 22:50:16'),
-(4, 2, 4, 'female', 'publication', 'Temporary published-data diagnosis for Testphora borealis.', 'TEST description.', NULL, '2026-10-05 23:55:31', '2026-10-05 23:55:31'),
-(5, 2, 6, 'female', 'new_observations', 'Temporary diagnosis for Testphora sp. Prairie 1.', 'TEST description based on new observations.', NULL, '2026-10-05 23:55:31', '2026-10-05 23:55:31'),
-(6, 3, 5, 'female', 'mixed', 'Temporary mixed-source diagnosis for Testphora occidentalis.', 'TEST description using published information and new observations.', NULL, '2026-10-05 23:55:31', '2026-10-05 23:55:31');
+INSERT INTO `species_descriptions` (`id`, `workspace_id`, `species_id`, `sex_scope`, `basis`, `interpretation_label`, `interpretation_type`, `attribution_text`, `derived_from_description_id`, `diagnosis`, `remarks`, `prepared_by_uid`, `created_at`, `updated_at`) VALUES
+(1, 1, 2, 'female', NULL, NULL, 'new_interpretation', NULL, NULL, 'Temporary diagnosis for testing.', 'Temporary description record.', NULL, '2026-09-25 22:49:16', '2026-09-25 22:49:16'),
+(2, 1, 2, 'male', NULL, NULL, 'new_interpretation', NULL, NULL, NULL, NULL, NULL, '2026-09-25 22:50:16', '2026-09-25 22:50:16'),
+(4, 2, 4, 'female', 'publication', NULL, 'published', NULL, NULL, 'Temporary published-data diagnosis for Testphora borealis.', 'TEST description.', NULL, '2026-10-05 23:55:31', '2026-10-22 23:35:58'),
+(5, 2, 6, 'female', 'new_observations', NULL, 'new_interpretation', NULL, NULL, 'Temporary diagnosis for Testphora sp. Prairie 1.', 'TEST description based on new observations.', NULL, '2026-10-05 23:55:31', '2026-10-05 23:55:31'),
+(6, 3, 5, 'female', 'mixed', NULL, 'new_interpretation', NULL, NULL, 'Temporary mixed-source diagnosis for Testphora occidentalis.', 'TEST description using published information and new observations.', NULL, '2026-10-05 23:55:31', '2026-10-05 23:55:31');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `specimen_observations`
+--
+
+CREATE TABLE `specimen_observations` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `specimen_reference_id` bigint(20) UNSIGNED NOT NULL,
+  `character_id` bigint(20) UNSIGNED NOT NULL,
+  `numeric_min` decimal(12,6) DEFAULT NULL,
+  `numeric_max` decimal(12,6) DEFAULT NULL,
+  `observation_basis` enum('direct_exam','publication','other') NOT NULL DEFAULT 'direct_exam',
+  `observed_by_uid` varchar(128) DEFAULT NULL,
+  `attribution_text` varchar(255) DEFAULT NULL,
+  `source_publication_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `specimen_observation_states`
+--
+
+CREATE TABLE `specimen_observation_states` (
+  `specimen_observation_id` bigint(20) UNSIGNED NOT NULL,
+  `character_id` bigint(20) UNSIGNED NOT NULL,
+  `state_id` bigint(20) UNSIGNED NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -392,7 +476,8 @@ CREATE TABLE `workspaces` (
 INSERT INTO `workspaces` (`id`, `name`, `description`, `owner_uid`, `visibility`, `created_at`, `updated_at`) VALUES
 (1, 'Myriophora', 'Structured species descriptions and identification data for Myriophora.', NULL, 'private', '2026-09-25 01:13:24', '2026-09-25 01:13:24'),
 (2, 'TEST Canada Revision', 'Temporary Canadian Testphora workspace.', NULL, 'private', '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
-(3, 'TEST USA Revision', 'Temporary United States Testphora workspace.', NULL, 'private', '2026-10-05 23:49:08', '2026-10-05 23:49:08');
+(3, 'TEST USA Revision', 'Temporary United States Testphora workspace.', NULL, 'private', '2026-10-05 23:49:08', '2026-10-05 23:49:08'),
+(4, 'POSTMAN TEST 1792637159301 Workspace', 'Temporary Postman CRUD workspace', 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-10-22 02:45:59', '2026-10-22 02:45:59');
 
 -- --------------------------------------------------------
 
@@ -466,7 +551,24 @@ ALTER TABLE `character_observations`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_description_character` (`description_id`,`character_id`),
   ADD UNIQUE KEY `uq_observation_character` (`id`,`character_id`),
+  ADD UNIQUE KEY `uq_character_observation_description_character` (`id`,`description_id`,`character_id`),
   ADD KEY `idx_character_observations_character` (`character_id`);
+
+--
+-- Indexes for table `character_observation_publications`
+--
+ALTER TABLE `character_observation_publications`
+  ADD PRIMARY KEY (`character_observation_id`,`publication_id`),
+  ADD KEY `idx_character_observation_publications_publication` (`publication_id`);
+
+--
+-- Indexes for table `character_observation_specimen_evidence`
+--
+ALTER TABLE `character_observation_specimen_evidence`
+  ADD PRIMARY KEY (`character_observation_id`,`specimen_observation_id`),
+  ADD KEY `idx_cose_description_specimen` (`description_id`,`specimen_reference_id`),
+  ADD KEY `idx_cose_specimen_observation` (`specimen_observation_id`,`specimen_reference_id`,`character_id`),
+  ADD KEY `idx_cose_character_observation` (`character_observation_id`,`description_id`,`character_id`);
 
 --
 -- Indexes for table `character_states`
@@ -490,6 +592,13 @@ ALTER TABLE `description_publications`
 ALTER TABLE `description_specimens`
   ADD PRIMARY KEY (`description_id`,`specimen_reference_id`),
   ADD KEY `idx_description_specimens_specimen` (`specimen_reference_id`);
+
+--
+-- Indexes for table `description_specimen_publications`
+--
+ALTER TABLE `description_specimen_publications`
+  ADD PRIMARY KEY (`description_id`,`specimen_reference_id`,`publication_id`),
+  ADD KEY `idx_description_specimen_publications_publication` (`publication_id`);
 
 --
 -- Indexes for table `identification_keys`
@@ -548,8 +657,31 @@ ALTER TABLE `species`
 --
 ALTER TABLE `species_descriptions`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `uq_species_description` (`workspace_id`,`species_id`,`sex_scope`),
-  ADD KEY `idx_species_descriptions_species` (`species_id`);
+  ADD KEY `idx_species_descriptions_species` (`species_id`),
+  ADD KEY `idx_species_descriptions_workspace_species_sex` (`workspace_id`,`species_id`,`sex_scope`),
+  ADD KEY `idx_species_descriptions_derived_from` (`derived_from_description_id`);
+
+--
+-- Indexes for table `specimen_observations`
+--
+ALTER TABLE `specimen_observations`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_specimen_observation_character` (`id`,`character_id`),
+  ADD UNIQUE KEY `uq_specimen_observation_specimen_character` (`id`,`specimen_reference_id`,`character_id`),
+  ADD KEY `idx_specimen_observations_specimen` (`specimen_reference_id`),
+  ADD KEY `idx_specimen_observations_character` (`character_id`),
+  ADD KEY `idx_specimen_observations_observer` (`observed_by_uid`),
+  ADD KEY `idx_specimen_observations_source_publication` (`source_publication_id`);
+
+--
+-- Indexes for table `specimen_observation_states`
+--
+ALTER TABLE `specimen_observation_states`
+  ADD PRIMARY KEY (`specimen_observation_id`,`state_id`),
+  ADD KEY `idx_specimen_observation_states_state` (`state_id`),
+  ADD KEY `idx_specimen_observation_states_character` (`character_id`),
+  ADD KEY `fk_specimen_observation_states_observation` (`specimen_observation_id`,`character_id`),
+  ADD KEY `fk_specimen_observation_states_state` (`state_id`,`character_id`);
 
 --
 -- Indexes for table `specimen_references`
@@ -590,19 +722,19 @@ ALTER TABLE `workspace_species`
 -- AUTO_INCREMENT for table `characters`
 --
 ALTER TABLE `characters`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `character_observations`
 --
 ALTER TABLE `character_observations`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `character_states`
 --
 ALTER TABLE `character_states`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `identification_keys`
@@ -620,13 +752,19 @@ ALTER TABLE `publications`
 -- AUTO_INCREMENT for table `species`
 --
 ALTER TABLE `species`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `species_descriptions`
 --
 ALTER TABLE `species_descriptions`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `specimen_observations`
+--
+ALTER TABLE `specimen_observations`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `specimen_references`
@@ -638,7 +776,7 @@ ALTER TABLE `specimen_references`
 -- AUTO_INCREMENT for table `workspaces`
 --
 ALTER TABLE `workspaces`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- Constraints for dumped tables
@@ -650,6 +788,21 @@ ALTER TABLE `workspaces`
 ALTER TABLE `character_observations`
   ADD CONSTRAINT `fk_character_observations_character` FOREIGN KEY (`character_id`) REFERENCES `characters` (`id`),
   ADD CONSTRAINT `fk_character_observations_description` FOREIGN KEY (`description_id`) REFERENCES `species_descriptions` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `character_observation_publications`
+--
+ALTER TABLE `character_observation_publications`
+  ADD CONSTRAINT `fk_character_observation_publications_observation` FOREIGN KEY (`character_observation_id`) REFERENCES `character_observations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_character_observation_publications_publication` FOREIGN KEY (`publication_id`) REFERENCES `publications` (`id`);
+
+--
+-- Constraints for table `character_observation_specimen_evidence`
+--
+ALTER TABLE `character_observation_specimen_evidence`
+  ADD CONSTRAINT `fk_cose_character_observation` FOREIGN KEY (`character_observation_id`,`description_id`,`character_id`) REFERENCES `character_observations` (`id`, `description_id`, `character_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cose_description_specimen` FOREIGN KEY (`description_id`,`specimen_reference_id`) REFERENCES `description_specimens` (`description_id`, `specimen_reference_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cose_specimen_observation` FOREIGN KEY (`specimen_observation_id`,`specimen_reference_id`,`character_id`) REFERENCES `specimen_observations` (`id`, `specimen_reference_id`, `character_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `character_states`
@@ -670,6 +823,13 @@ ALTER TABLE `description_publications`
 ALTER TABLE `description_specimens`
   ADD CONSTRAINT `fk_description_specimens_description` FOREIGN KEY (`description_id`) REFERENCES `species_descriptions` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_description_specimens_specimen` FOREIGN KEY (`specimen_reference_id`) REFERENCES `specimen_references` (`id`);
+
+--
+-- Constraints for table `description_specimen_publications`
+--
+ALTER TABLE `description_specimen_publications`
+  ADD CONSTRAINT `fk_description_specimen_publications_description_specimen` FOREIGN KEY (`description_id`,`specimen_reference_id`) REFERENCES `description_specimens` (`description_id`, `specimen_reference_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_description_specimen_publications_publication` FOREIGN KEY (`publication_id`) REFERENCES `publications` (`id`);
 
 --
 -- Constraints for table `identification_keys`
@@ -702,7 +862,23 @@ ALTER TABLE `observation_states`
 -- Constraints for table `species_descriptions`
 --
 ALTER TABLE `species_descriptions`
+  ADD CONSTRAINT `fk_species_descriptions_derived_from` FOREIGN KEY (`derived_from_description_id`) REFERENCES `species_descriptions` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_species_descriptions_workspace_species` FOREIGN KEY (`workspace_id`,`species_id`) REFERENCES `workspace_species` (`workspace_id`, `species_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `specimen_observations`
+--
+ALTER TABLE `specimen_observations`
+  ADD CONSTRAINT `fk_specimen_observations_character` FOREIGN KEY (`character_id`) REFERENCES `characters` (`id`),
+  ADD CONSTRAINT `fk_specimen_observations_source_publication` FOREIGN KEY (`source_publication_id`) REFERENCES `publications` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_specimen_observations_specimen` FOREIGN KEY (`specimen_reference_id`) REFERENCES `specimen_references` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `specimen_observation_states`
+--
+ALTER TABLE `specimen_observation_states`
+  ADD CONSTRAINT `fk_specimen_observation_states_observation` FOREIGN KEY (`specimen_observation_id`,`character_id`) REFERENCES `specimen_observations` (`id`, `character_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_specimen_observation_states_state` FOREIGN KEY (`state_id`,`character_id`) REFERENCES `character_states` (`id`, `character_id`);
 
 --
 -- Constraints for table `specimen_references`
