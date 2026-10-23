@@ -3,11 +3,12 @@ import { fireEvent, render as renderReact, screen, waitFor, within } from "@test
 import { MemoryRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import TaxonomyWorkbench from "./TaxonomyWorkbench";
 import TaxonomySection, { taxonomySections } from "../components/taxonomy/TaxonomySection";
+import SpeciesManager from "../components/taxonomy/SpeciesManager";
 import { useAuth } from "../auth/AuthContext";
-import { fetchTaxonomyWorkspaces } from "../utils/api/taxonomy";
+import { fetchTaxonomyWorkspaces, fetchWorkspaceSpecies } from "../utils/api/taxonomy";
 
 jest.mock("../auth/AuthContext", () => ({ useAuth: jest.fn() }));
-jest.mock("../utils/api/taxonomy", () => ({ fetchTaxonomyWorkspaces: jest.fn() }));
+jest.mock("../utils/api/taxonomy", () => ({ fetchTaxonomyWorkspaces: jest.fn(), fetchWorkspaceSpecies: jest.fn() }));
 
 const workspaces = [
   { id: "9007199254740993", name: "Canada revision", description: "Canadian research", visibility: "private", owner_uid: "another-researcher" },
@@ -32,7 +33,7 @@ function TestRouter({ children }) {
       <Routes>
         <Route path="/admin/taxonomy" element={children}>
           <Route index element={<Navigate to="species" replace />} />
-          {taxonomySections.map(({ key }) => <Route key={key} path={key} element={<TaxonomySection sectionKey={key} />} />)}
+          {taxonomySections.map(({ key }) => <Route key={key} path={key} element={key === "species" ? <SpeciesManager /> : <TaxonomySection sectionKey={key} />} />)}
           <Route path="*" element={<Navigate to="/admin/taxonomy/species" replace />} />
         </Route>
       </Routes>
@@ -44,11 +45,14 @@ function render(ui) {
 }
 
 beforeEach(() => {
+  window.matchMedia = jest.fn().mockImplementation((query) => ({ matches: false, media: query, addListener: jest.fn(), removeListener: jest.fn(), addEventListener: jest.fn(), removeEventListener: jest.fn() }));
   initialPath = "/admin/taxonomy";
   sessionStorage.clear();
   useAuth.mockReturnValue({ user: { uid: "editor" }, authLoading: false });
   fetchTaxonomyWorkspaces.mockReset();
   fetchTaxonomyWorkspaces.mockResolvedValue(workspaces);
+  fetchWorkspaceSpecies.mockReset();
+  fetchWorkspaceSpecies.mockResolvedValue([]);
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -138,7 +142,7 @@ test("the base route defaults to Species and workflow navigation waits for works
   expect(screen.queryByRole("heading", { name: "Species" })).not.toBeInTheDocument();
   await chooseWorkspace("Canada revision");
   expect(screen.getByRole("tab", { name: "Species" })).toHaveAttribute("aria-selected", "true");
-  expect(screen.getByRole("heading", { name: "Species" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Species in this workspace" })).toBeInTheDocument();
 });
 
 test("section URLs and browser history stay in sync while sharing workspace state", async () => {

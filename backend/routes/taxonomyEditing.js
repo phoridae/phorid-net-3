@@ -2,6 +2,7 @@ const express = require("express");
 const pool = require("../dbTaxonomy");
 const requireAdmin = require("../middleware/requireAdmin");
 const { specimenObservations, withSpecimenSpecies } = require("../services/taxonomyProvenance");
+const gbifTaxonomy = require("../services/gbifTaxonomy");
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -162,9 +163,50 @@ router.post("/species", mutation(async (req, db) => {
   const values = body(req, speciesFields, ["genus"]);
   const status = values.species_status || "published";
   if (status === "published" && !values.specific_epithet?.trim()) fail(400, "Published species require specific_epithet");
-  if (status === "work_in_progress" && !values.working_name?.trim()) fail(400, "Work-in-progress species require working_name");
+  if (status === "work_in_progress" && !values.specific_epithet?.trim() && !values.working_name?.trim()) fail(400, "Work-in-progress species without an epithet require working_name");
   return insert(db, "species", values);
 }, 201));
+router.post("/workspaces/:id/species/import", async (req, res, next) => {
+  try {
+    const values = body(req, { col_xr_taxon_key: text(64, false) }, ["col_xr_taxon_key"]);
+    // Finish remote reads before taking database locks. Ignore client-supplied names/legacy IDs.
+    req.importSpecies = await gbifTaxonomy.resolveSpecies(values.col_xr_taxon_key);
+    next();
+  } catch (failure) {
+    if (failure.status) return res.status(failure.status).json({ error: failure.message });
+    next(failure);
+  }
+}, mutation(async (req, db) => {
+  await find(db, "workspaces", req.params.id);
+  const values = body({ body: req.importSpecies }, speciesFields);
+  async function matches() {
+    return rows(db, "SELECT * FROM species WHERE col_xr_taxon_key = ? OR gbif_taxon_key = ? FOR UPDATE", [values.col_xr_taxon_key, values.gbif_taxon_key]);
+  }
+  let found = await matches();
+  let created = false;
+  if (!found.length) {
+    try {
+      found = [await insert(db, "species", values)];
+      created = true;
+    } catch (failure) {
+      if (failure.code !== "ER_DUP_ENTRY") throw failure;
+      found = await matches();
+      if (!found.length) throw failure;
+    }
+  }
+  if (found.length !== 1) fail(409, "External identifiers refer to different curated species; review those records before importing");
+  let species = serialize(found[0]);
+  if ((species.col_xr_taxon_key && species.col_xr_taxon_key !== values.col_xr_taxon_key) ||
+      (species.gbif_taxon_key && values.gbif_taxon_key && species.gbif_taxon_key !== values.gbif_taxon_key)) {
+    fail(409, "Existing species has conflicting external identifiers; review it before importing");
+  }
+  const identifiers = { col_xr_taxon_key: species.col_xr_taxon_key || values.col_xr_taxon_key,
+    gbif_taxon_key: species.gbif_taxon_key || values.gbif_taxon_key };
+  if (identifiers.col_xr_taxon_key !== species.col_xr_taxon_key || identifiers.gbif_taxon_key !== species.gbif_taxon_key) species = await update(db, "species", species.id, identifiers);
+  const membership = await rows(db, "SELECT species_id FROM workspace_species WHERE workspace_id = ? AND species_id = ? FOR UPDATE", [req.params.id, species.id]);
+  if (!membership.length) await db.query("INSERT INTO workspace_species (workspace_id, species_id) VALUES (?, ?)", [req.params.id, species.id]);
+  return { species, workspace_id: req.params.id, created, already_in_workspace: membership.length > 0 };
+}));
 router.post("/workspaces/:id/species", mutation(async (req, db) => {
   const values = body(req, { species_id: identifier, display_order: order }, ["species_id"]);
   await find(db, "workspaces", req.params.id);

@@ -1,6 +1,6 @@
 import { auth } from "../../firebase";
 import { apiUrl } from "./config";
-import { fetchTaxonomyWorkspaces } from "./taxonomy";
+import { fetchTaxonomyWorkspaces, importWorkspaceSpecies, removeWorkspaceSpecies } from "./taxonomy";
 
 jest.mock("../../firebase", () => ({ auth: { currentUser: null } }));
 const originalFetch = global.fetch;
@@ -40,4 +40,21 @@ test("handles malformed/error responses without displaying server HTML", async (
   await expect(fetchTaxonomyWorkspaces()).rejects.toThrow("Could not load taxonomy workspaces");
   fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ unexpected: true }) });
   await expect(fetchTaxonomyWorkspaces()).rejects.toThrow("unexpected response");
+});
+
+test("imports only the selected COL ID using JSON and a Firebase bearer token", async () => {
+  fetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ species: { id: "2" } }) });
+  await importWorkspaceSpecies("4", "FQL6");
+  expect(fetch).toHaveBeenCalledWith(apiUrl("/api/taxonomy/workspaces/4/species/import"), expect.objectContaining({
+    method: "POST", body: JSON.stringify({ col_xr_taxon_key: "FQL6" }),
+    headers: { Authorization: "Bearer firebase-token", "Content-Type": "application/json" },
+  }));
+});
+
+test("membership DELETE handles an empty 204 response and preserves controlled conflict status", async () => {
+  fetch.mockResolvedValueOnce({ ok: true, status: 204 });
+  expect(await removeWorkspaceSpecies("4", "2")).toBeNull();
+  expect(fetch).toHaveBeenCalledWith(apiUrl("/api/taxonomy/workspaces/4/species/2"), expect.objectContaining({ method: "DELETE" }));
+  fetch.mockResolvedValueOnce({ ok: false, status: 409, json: async () => ({ error: "Descriptions are used by an identification key" }) });
+  await expect(removeWorkspaceSpecies("4", "2")).rejects.toMatchObject({ status: 409 });
 });

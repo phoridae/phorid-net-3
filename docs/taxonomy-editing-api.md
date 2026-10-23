@@ -49,7 +49,8 @@ Defaults and validation:
   making the request. They are attribution fields, not an audit of the caller.
   Neither field affects authentication or grants access through these routes.
 - Species default to `published` and require a nonblank `specific_epithet`.
-  `work_in_progress` species require a nonblank `working_name`. Creating a species
+  `work_in_progress` species without a specific epithet require a nonblank
+  `working_name`; a provisional epithet may also distinguish a WIP taxon. Creating a species
   does not attach it to a workspace automatically.
   The optional external identifiers are independent: `gbif_taxon_key` is the
   legacy numeric GBIF Backbone key (positive unsigned BIGINT, serialized as a
@@ -212,8 +213,8 @@ its existing optional/null, positive-ID validation and uniqueness behavior durin
 reassignment. `johnhash_phorid_research` is a rebuildable GBIF snapshot/cache;
 curated taxonomy records never depend on its internal row IDs or foreign keys.
 Existing Phorid.net/GBIF integrations continue using `gbif_taxon_key` unchanged.
-Future species lookup/import may populate one or both taxonomic identifiers;
-there are no new live GBIF/COL lookup endpoints or HTTP calls in this change.
+Species lookup/import may populate one or both taxonomic identifiers through the
+explicit adapter below. Existing legacy GBIF endpoints retain their behavior.
 
 For example, `POST /api/taxonomy/species` may receive:
 
@@ -365,3 +366,117 @@ to MySQL or Firebase. MySQL-specific locking, concurrency, and deployment
 credentials still require live integration verification.
 The editing fixture's foreign-key actions are checked against
 `db/schema/johnhash_phorid_taxonomy.sql` to detect cascade/restriction drift.
+
+The Species manager at `/admin/taxonomy/species` provides a workspace table and an
+Add species modal. The table shows scientific/working names, status, both external
+IDs, and description counts. Removing a species calls the workspace membership
+DELETE endpoint, never global species DELETE. Its confirmation explains that
+existing workspace descriptions/observations cascade; descriptions selected by
+keys still block removal. Global species and specimens remain available.
+
+Two species-entry workflows:
+
+1. **Find in GBIF / Catalogue of Life.** Searches curated global records and COL XR
+   with a 350 ms debounce and canceled stale requests. Labels distinguish known
+   local species, species already in the workspace, and external results. Names,
+   genus/epithet, rank/status, IDs and accepted-name information are displayed.
+   Accepted Phoridae species can be imported; synonyms/higher ranks are displayed
+   but cannot be imported as species in this workflow. Import resolves/revalidates
+   the selection server-side, reuses a global record by external ID, and attaches it.
+2. **Create working taxon manually.** A searchable GENUS picker normally supplies
+   a standardized Phoridae genus string. “Enter genus manually” permits new or
+   provisional strings; the API does not invent “Unknown” or require a genus ID.
+   Genus, optional specific epithet/code name, status and notes are supported.
+   Before creation, a curated search offers likely matches with “Use existing
+   species”; a researcher can explicitly choose a separate record. Names are not
+   unique identifiers. Successful creation is followed by workspace membership.
+   If attachment fails, the UI retains the created ID and retries only attachment.
+   A fresh manual record may have both external IDs null.
+
+Added admin-only endpoints (paths relative to `/api/taxonomy`):
+
+| Method | Path | Request / response |
+| --- | --- | --- |
+| GET | `/species/search?q=...` | First 30 curated global species matching name/code/identifier terms; returns a species array with string IDs |
+| GET | `/lookup/gbif/taxa?q=...&rank=SPECIES` | Normalized COL XR search; `rank` may be `SPECIES` (default) or `GENUS`; returns `{results: [...], limit: 30}` |
+| POST | `/workspaces/:id/species/import` | `{ "col_xr_taxon_key": "FQL6" }`; returns `200` with `{species, workspace_id, created, already_in_workspace}` |
+
+Queries require 2–200 characters. Curated search treats wildcard characters
+literally and combines up to eight terms across genus, epithet, code and external
+IDs. Results are limited to 30; refine the query for more specific matches. This
+is discovery, not an exhaustive global inventory or a name uniqueness constraint.
+
+The normalized external result shape is independent of upstream response details:
+
+```json
+{
+  "col_xr_taxon_key": "FQL6",
+  "gbif_taxon_key": null,
+  "scientific_name": "Apocephalus (Apocephalus) gemellus",
+  "canonical_name": "Apocephalus (Apocephalus) gemellus",
+  "rank": "SPECIES",
+  "taxonomic_status": "ACCEPTED",
+  "family": "Phoridae",
+  "genus": "Apocephalus",
+  "specific_epithet": "gemellus",
+  "accepted_name": null,
+  "accepted_col_xr_taxon_key": null,
+  "importable": true,
+  "local_species_id": null
+}
+```
+
+Search checks current COL IDs against curated records and includes local IDs and
+already-stored legacy keys when available. The UI compares those IDs with loaded
+workspace membership for availability labels; these labels do not authorize edits.
+Legacy-only local records may only be recognized during final import resolution.
+Search never labels a numeric internal ChecklistBank key as a legacy GBIF key.
+
+External APIs used by the adapter:
+
+- Interactive species/genus search: ChecklistBank
+  `GET https://api.checklistbank.org/dataset/3LXR/nameusage/search`, with rank and
+  a 30-result cap. `3LXR` selects the current Extended Release. Phoridae family
+  classification is checked before returning results; ambiguous/unclassified or
+  non-Phoridae results are excluded, not presented as ordinary choices.
+- Final identity: `GET https://api.gbif.org/v2/species/match`, using
+  `checklistKey=7ddf754f-d193-4cc9-b351-99906754a03b` and
+  `scientificNameID=col:<selected ID>`. Only exact, accepted, species-rank Phoridae
+  results with the same ID, genus and epithet are importable. A release/matching
+  mismatch returns `400` rather than silently changing the selected taxon.
+- Optional legacy identity: v2 name matching against GBIF Backbone checklist
+  `d7dddbf4-2cf0-4f39-9b2a-bb099caae36c`, followed by a COL match using
+  `scientificNameID=gbif:<legacy key>`. The legacy key is used only for an exact
+  Phoridae species match that maps back to the selected COL ID. Unavailable or
+  inconsistent legacy mapping leaves it null; that does not block valid import.
+
+Each external HTTP request has a 10-second timeout. Search/final-resolution
+failures return controlled `502` or `504`; invalid query/rank/import selections
+return `400`, missing workspaces `404`, and identity/concurrency conflicts `409`.
+Only fixed documented service hosts are called; React never consumes raw external
+payloads or scrapes GBIF pages. No research-cache row IDs or cross-database FKs
+are introduced.
+
+External import finishes HTTP reads before beginning its database transaction.
+It locks the destination workspace, matches curated species by either verified
+external identifier, and inserts only if neither exists. Existing curated names
+are retained; missing verified identifiers may be filled without replacing a
+conflicting non-null value. Identifiers resolving to different local records
+return `409` for review, never an automatic merge. Existing membership is reused.
+Schema unique constraints and duplicate-insert recovery protect global reuse;
+concurrent lock/deadlock conflicts return `409` and a repeat request is safe.
+Manual name-only creation deliberately has no automatic merge or uniqueness rule.
+
+The old species POST and workspace species POST/DELETE routes remain available.
+Duplicate direct membership POST still returns `409`; the UI verifies current
+membership before treating such a conflict as an already-completed add.
+
+Authorization remains the existing Firebase admin claim. Workspace owner_uid and
+`visibility=private` do not provide owner/collaborator restrictions. All admins can
+currently curate any workspace; collaborator editing permissions remain a backend
+gap. No browser filtering is used or described as a security mechanism.
+
+Primary service references:
+[COL search](https://catalogueoflife.github.io/rcol/reference/clb_usage_search.html),
+[COL Extended Release alias](https://catalogueoflife.github.io/rcol/reference/col_key.html),
+[GBIF COL XR migration and identifier matching](https://data-blog.gbif.org/post/catalogue-of-life-taxonomic-backbone/).

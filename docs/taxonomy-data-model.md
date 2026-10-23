@@ -9,6 +9,18 @@
 - Working/code-name species are valid assignments: for example, Apocephalus sp.
   AZ-17 has genus Apocephalus, specific_epithet NULL, species_status
   work_in_progress, and working_name AZ-17. A formal published name is not required.
+- The Species manager has two entry workflows: import an accepted Phoridae
+  species from GBIF/COL XR, or create a manual/working global taxon. Both then
+  select the global species in the active workspace; membership is not ownership.
+- COL XR is the preferred current external taxonomy. Import revalidates an exact
+  COL identity, reuses a curated record by external identifier, and creates only
+  missing workspace membership. A legacy GBIF key is optional and is retained
+  only when known or verified by an identifier round trip; absence is not an error.
+- Manual genus entry normally uses a standardized COL genus search, with explicit
+  manual/provisional genus fallback for new or unresolved genera. No genus ID is
+  required or stored. A WIP taxon without an epithet requires a nonblank working
+  name; neither external identifier is required. Likely curated matches are offered
+  for reuse without imposing name-string uniqueness.
 - Specimen assignment may change without changing the physical specimen's ID,
   attributed observations, description-level synthesis, publications, or evidence
   links. Historical description-specimen relationships remain valid even when the
@@ -75,9 +87,14 @@
   neither replaces, derives, or overwrites the other. Either may be NULL, and
   working/undescribed taxa may have neither. Existing Phorid.net integrations
   continue using the legacy GBIF key; future lookup/import workflows may populate
-  one or both identifiers. No live lookup/import is implied by storing them.
+  one or both identifiers. The Species manager's lookup/import adapter provides
+  one explicit way to populate them; storing an identifier does not itself fetch
+  or refresh external data.
 - For specimen identity,
   specimen_references.gbif_occurrence_key identifies the GBIF occurrence.
   johnhash_phorid_research is a rebuildable/cacheable GBIF snapshot, not the
   authoritative identity link. Durable curated taxonomy records do not depend
   on its internal primary keys or cross-database foreign keys.
+- Current API authorization is admin-wide. Workspace owner_uid and visibility
+  metadata do not enforce owner/collaborator editing rights. The Species UI
+  follows that server policy and does not use browser filtering as authorization.

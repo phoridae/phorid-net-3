@@ -2,10 +2,47 @@ const express = require("express");
 const taxonomyPool = require("../dbTaxonomy");
 const requireAdmin = require("../middleware/requireAdmin");
 const { descriptionProvenance, withSpecimenSpecies } = require("../services/taxonomyProvenance");
+const gbifTaxonomy = require("../services/gbifTaxonomy");
 
 const router = express.Router();
 
 router.use(requireAdmin);
+
+function searchQuery(req) {
+  if (typeof req.query.q !== "string" || req.query.q.trim().length < 2 || req.query.q.length > 200) {
+    throw Object.assign(new Error("q must contain 2–200 characters"), { status: 400 });
+  }
+  return req.query.q.trim();
+}
+router.get("/species/search", async (req, res, next) => {
+  try {
+    const terms = searchQuery(req).split(/\s+/).slice(0, 8);
+    const conditions = terms.map(() => "(genus LIKE ? ESCAPE '!' OR specific_epithet LIKE ? ESCAPE '!' OR working_name LIKE ? ESCAPE '!' OR gbif_taxon_key LIKE ? ESCAPE '!' OR col_xr_taxon_key LIKE ? ESCAPE '!')");
+    const params = terms.flatMap((term) => Array(5).fill(`%${term.replace(/[!%_]/g, "!$&")}%`));
+    const [result] = await taxonomyPool.query(`SELECT * FROM species WHERE ${conditions.join(" AND ")} ORDER BY genus, specific_epithet, working_name, id LIMIT 30`, params);
+    res.json(result.map((row) => ({ ...row, id: String(row.id), gbif_taxon_key: serializeId(row.gbif_taxon_key), col_xr_taxon_key: serializeId(row.col_xr_taxon_key) })));
+  } catch (failure) {
+    if (failure.status) return res.status(failure.status).json({ error: failure.message });
+    next(failure);
+  }
+});
+router.get("/lookup/gbif/taxa", async (req, res, next) => {
+  try {
+    const q = searchQuery(req);
+    const rank = req.query.rank || "SPECIES";
+    if (!["SPECIES", "GENUS"].includes(rank)) return res.status(400).json({ error: "rank must be SPECIES or GENUS" });
+    const taxa = await gbifTaxonomy.search(q, rank);
+    const ids = taxa.map((taxon) => taxon.col_xr_taxon_key);
+    const [local] = ids.length ? await taxonomyPool.query(`SELECT * FROM species WHERE col_xr_taxon_key IN (${ids.map(() => "?").join(",")})`, ids) : [[]];
+    res.json({ results: taxa.map((taxon) => {
+      const existing = local.find((species) => String(species.col_xr_taxon_key) === taxon.col_xr_taxon_key);
+      return { ...taxon, gbif_taxon_key: serializeId(existing?.gbif_taxon_key ?? taxon.gbif_taxon_key), local_species_id: serializeId(existing?.id) };
+    }), limit: 30 });
+  } catch (failure) {
+    if (failure.status) return res.status(failure.status).json({ error: failure.message });
+    next(failure);
+  }
+});
 
 router.get("/health", async (req, res) => {
   try {

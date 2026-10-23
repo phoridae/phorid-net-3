@@ -45,7 +45,7 @@ const keyRouter = require("../routes/keys");
 beforeEach(async () => { await call("reset"); injectFailure = false; });
 function request(method, url, body, token = "admin", target = router) {
   return new Promise((resolve) => {
-    const req = { method, url, body, headers: token ? { authorization: `Bearer ${token}` } : {} };
+    const req = { method, url, body, query: Object.fromEntries(new URL(url, "http://local").searchParams), headers: token ? { authorization: `Bearer ${token}` } : {} };
     const res = {
       statusCode: 200,
       status(code) { this.statusCode = code; return this; },
@@ -79,6 +79,7 @@ test("every editing endpoint is admin-only before a connection is acquired", asy
     ["PUT", "/descriptions/1/observations/1/specimen-evidence"],
     ["PUT", "/descriptions/1/observations/1/publication-evidence"],
     ["POST", "/descriptions/1/publications"], ["DELETE", "/descriptions/1/publications/1"],
+    ["POST", "/workspaces/1/species/import"],
   ];
   const before = acquired;
   for (const [method, url] of routes) {
@@ -891,4 +892,84 @@ test("workspace, description, specimen, provenance and key species reads include
   const filtered = await request("POST", "/1/filter", { filters: [{ character_id: 1, state_ids: [1] }] }, "admin", keyRouter);
   assert.equal(filtered.status, 200);
   check(filtered.body[0]);
+});
+
+const gbifTaxonomy = require("../services/gbifTaxonomy");
+const externalSpeciesFixture = { genus: "Apocephalus", specific_epithet: "gemellus", species_status: "published", col_xr_taxon_key: "FQL6", gbif_taxon_key: "1545474" };
+
+test("curated search finds global species by scientific/working names and identifiers", async () => {
+  await createWorkingSpecies();
+  for (const q of ["Apocephalus AZ-17", "1234567", "AZ-17"]) {
+    const response = await request("GET", `/species/search?q=${encodeURIComponent(q)}`, undefined, "admin", readRouter);
+    assert.equal(response.status, 200);
+    assert.equal(response.body.length, 1);
+    assert.equal(response.body[0].working_name, "AZ-17");
+  }
+  assert.deepEqual((await request("GET", "/species/search?q=%25%25", undefined, "admin", readRouter)).body, []);
+  assert.equal((await request("GET", "/species/search?q=a", undefined, "admin", readRouter)).status, 400);
+});
+
+test("normalized external lookup annotates existing local IDs and handles upstream failure", async (t) => {
+  t.mock.method(gbifTaxonomy, "search", async () => [{ ...externalSpeciesFixture, rank: "SPECIES", importable: true }]);
+  await request("POST", "/species", externalSpeciesFixture);
+  const response = await request("GET", "/lookup/gbif/taxa?q=Apocephalus", undefined, "admin", readRouter);
+  assert.equal(response.status, 200);
+  assert.equal(response.body.results[0].col_xr_taxon_key, "FQL6");
+  assert.ok(response.body.results[0].local_species_id);
+  assert.equal((await request("GET", "/lookup/gbif/taxa?q=Apocephalus&rank=FAMILY", undefined, "admin", readRouter)).status, 400);
+  gbifTaxonomy.search.mock.mockImplementation(async () => { throw Object.assign(new Error("Lookup unavailable"), { status: 502 }); });
+  assert.equal((await request("GET", "/lookup/gbif/taxa?q=Apocephalus", undefined, "admin", readRouter)).status, 502);
+});
+
+test("external import is idempotent for global species and workspace membership", async (t) => {
+  t.mock.method(gbifTaxonomy, "resolveSpecies", async () => externalSpeciesFixture);
+  const first = await request("POST", "/workspaces/1/species/import", { col_xr_taxon_key: "FQL6" });
+  const second = await request("POST", "/workspaces/1/species/import", { col_xr_taxon_key: "FQL6" });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.created, true);
+  assert.equal(second.body.species.id, first.body.species.id);
+  assert.equal(second.body.created, false);
+  assert.equal(second.body.already_in_workspace, true);
+  const other = await request("POST", "/workspaces/2/species/import", { col_xr_taxon_key: "FQL6" });
+  assert.equal(other.body.species.id, first.body.species.id);
+  assert.equal((await query("SELECT * FROM species WHERE col_xr_taxon_key = 'FQL6'")).length, 1);
+  assert.equal((await query("SELECT * FROM workspace_species WHERE species_id = ?", [first.body.species.id])).length, 2);
+});
+
+test("external imports reuse legacy-only records and fill verified COL IDs without replacing curated names", async (t) => {
+  t.mock.method(gbifTaxonomy, "resolveSpecies", async () => externalSpeciesFixture);
+  const existing = await request("POST", "/species", { genus: "Curatedgenus", specific_epithet: "curated", gbif_taxon_key: "1545474" });
+  const response = await request("POST", "/workspaces/1/species/import", { col_xr_taxon_key: "FQL6" });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.species.id, existing.body.id);
+  assert.equal(response.body.species.genus, "Curatedgenus");
+  assert.equal(response.body.species.col_xr_taxon_key, "FQL6");
+});
+
+test("conflicting external identities and failed imports never create memberships", async (t) => {
+  t.mock.method(gbifTaxonomy, "resolveSpecies", async () => externalSpeciesFixture);
+  await request("POST", "/species", { genus: "First", specific_epithet: "one", gbif_taxon_key: "1545474" });
+  await request("POST", "/species", { genus: "Second", specific_epithet: "two", col_xr_taxon_key: "FQL6" });
+  assert.equal((await request("POST", "/workspaces/1/species/import", { col_xr_taxon_key: "FQL6" })).status, 409);
+  assert.equal((await query("SELECT * FROM workspace_species WHERE workspace_id = 1")).length, 1);
+  gbifTaxonomy.resolveSpecies.mock.mockImplementation(async () => { throw Object.assign(new Error("External unavailable"), { status: 502 }); });
+  assert.equal((await request("POST", "/workspaces/1/species/import", { col_xr_taxon_key: "FQL6" })).status, 502);
+  assert.equal((await query("SELECT * FROM species")).length, 3);
+});
+
+test("manual WIP creation supports meaningful code names, epithets and no external IDs", async () => {
+  const working = await request("POST", "/species", { genus: "Apocephalus", working_name: "AZ-17", species_status: "work_in_progress" });
+  assert.equal(working.status, 201);
+  assert.equal(working.body.gbif_taxon_key, null);
+  assert.equal(working.body.col_xr_taxon_key, null);
+  assert.equal((await request("POST", "/workspaces/1/species", { species_id: working.body.id })).status, 201);
+  assert.equal((await request("POST", "/species", { genus: "Apocephalus", specific_epithet: "provisional", species_status: "work_in_progress" })).status, 201);
+  assert.equal((await request("POST", "/species", { genus: "Apocephalus", working_name: "  ", species_status: "work_in_progress" })).status, 400);
+});
+
+test("species search and external lookup require admin claims without client-side ownership filtering", async () => {
+  for (const url of ["/species/search?q=Apocephalus", "/lookup/gbif/taxa?q=Apocephalus"]) {
+    assert.equal((await request("GET", url, undefined, null, readRouter)).status, 401);
+    assert.equal((await request("GET", url, undefined, "member", readRouter)).status, 403);
+  }
 });
