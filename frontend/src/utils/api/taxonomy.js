@@ -37,3 +37,14 @@ export const createTaxonomySpecies = (body) => taxonomyRequest("/species", { met
 export const addWorkspaceSpecies = (id, speciesId) => taxonomyRequest(`/workspaces/${encodeURIComponent(id)}/species`, { method: "POST", body: { species_id: speciesId } });
 export const importWorkspaceSpecies = (id, colId) => taxonomyRequest(`/workspaces/${encodeURIComponent(id)}/species/import`, { method: "POST", body: { col_xr_taxon_key: colId } });
 export const removeWorkspaceSpecies = (id, speciesId) => taxonomyRequest(`/workspaces/${encodeURIComponent(id)}/species/${encodeURIComponent(speciesId)}`, { method: "DELETE" });
+
+export const fetchWorkspaceCharacters = (id, options) => taxonomyRequest(`/workspaces/${encodeURIComponent(id)}/characters`, options);
+export const searchTaxonomyCharacters = (q, options) => taxonomyRequest(`/characters/search?q=${encodeURIComponent(q)}`, options);
+export const fetchTaxonomyCharacter = (id, options) => taxonomyRequest(`/characters/${encodeURIComponent(id)}`, options);
+export const fetchCharacterUsage = (id, options) => taxonomyRequest(`/characters/${encodeURIComponent(id)}/usage`, options);
+export const createCharacterWithStates = (body) => taxonomyRequest("/characters/with-states", { method: "POST", body });
+export const updateTaxonomyCharacter = (id, body) => taxonomyRequest(`/characters/${encodeURIComponent(id)}`, { method: "PATCH", body });
+export const addCharacterState = (id, body) => taxonomyRequest(`/characters/${encodeURIComponent(id)}/states`, { method: "POST", body });
+export const removeCharacterState = (id, stateId) => taxonomyRequest(`/characters/${encodeURIComponent(id)}/states/${encodeURIComponent(stateId)}`, { method: "DELETE" });
+export const addWorkspaceCharacter = (id, characterId) => taxonomyRequest(`/workspaces/${encodeURIComponent(id)}/characters`, { method: "POST", body: { character_id: characterId } });
+export const removeWorkspaceCharacter = (id, characterId) => taxonomyRequest(`/workspaces/${encodeURIComponent(id)}/characters/${encodeURIComponent(characterId)}`, { method: "DELETE" });

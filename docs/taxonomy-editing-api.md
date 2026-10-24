@@ -18,6 +18,10 @@ products built from exact descriptions and their synthesized character observati
 | POST | `/workspaces/:id/species` | `species_id` required; `display_order` optional |
 | DELETE | `/workspaces/:id/species/:speciesId` | None |
 | POST | `/characters` | `name` required; `description`, `anatomical_region`, `data_type`, `unit`, `visibility` optional |
+| GET | `/characters/search?q=...` | Global library search; query must contain 2–200 characters |
+| GET | `/characters/:id` | Global definition with ordered states |
+| GET | `/characters/:id/usage` | Aggregate character and state usage counts |
+| POST | `/characters/with-states` | Character fields, optional `states` definitions and optional `workspace_id`; atomic creation |
 | PATCH | `/characters/:id` | Any character fields above |
 | DELETE | `/characters/:id` | None |
 | POST | `/characters/:id/states` | `name` required; `description`, `display_order` optional |
@@ -66,6 +70,9 @@ Defaults and validation:
   Only categorical characters have states; only numeric characters have units.
   A character's type cannot change while it has states or observations. Units
   cannot change while observations exist, to avoid silently reinterpreting data.
+  Characters/states are global reusable scientific definitions. Membership is
+  only a workspace working set. Reuse definitions that agree; create a distinct
+  global character for substantively different interpretations.
 - Descriptions default to `sex_scope: "general"`; `female` and `male` are also
   accepted. `basis` accepts `publication`, `new_observations`, `mixed`, or null.
   The species must already belong to the workspace. Multiple descriptions of the
@@ -480,3 +487,57 @@ Primary service references:
 [COL search](https://catalogueoflife.github.io/rcol/reference/clb_usage_search.html),
 [COL Extended Release alias](https://catalogueoflife.github.io/rcol/reference/col_key.html),
 [GBIF COL XR migration and identifier matching](https://data-blog.gbif.org/post/catalogue-of-life-taxonomic-backbone/).
+
+The Character Manager at `/admin/taxonomy/characters` uses the shared Workbench
+workspace context. Its table shows the selected global definitions, anatomical
+regions, data types, ordered categorical states or numeric units, and membership
+order. Removal changes only workspace membership: the global definition, states,
+and other workspaces remain. Existing description observations in that workspace
+continue to block removal with controlled `409` errors.
+
+Global character search matches name, anatomical region, and description using
+escaped, parameterized query terms, returning at most 30 records with ordered
+states, type, unit, and visibility. It includes all visibility values under the
+existing admin authorization. The UI debounces search, marks current memberships,
+and reuses a selected character through the existing membership POST. Duplicate
+membership returns `409`; the UI verifies membership before treating it as success.
+`GET /characters/:id` returns the same full global definition and states, or `404`.
+
+`POST /characters/with-states` creates a character, its states, and optionally its
+workspace membership in one transaction. It accepts the existing character fields
+plus optional `workspace_id` and `states: [{name, description?}]`. State array order
+becomes consecutive `display_order` values from zero. At most 200 state definitions
+are accepted; names are required and schema uniqueness still applies. Numeric
+characters reject nonempty state arrays; categorical characters reject units.
+The creator comes from the authenticated Firebase UID. The response is `201` with
+the character and ordered states, using string IDs. Invalid input returns `400`,
+a missing workspace returns `404`, and duplicate states/relationship conflicts
+return controlled `409`. A failure rolls back character, states, and membership
+together. Existing simple character and state creation endpoints are unchanged.
+
+`GET /characters/:id/usage` returns numeric `workspace_count`,
+`specimen_observation_count`, `description_observation_count`, and `key_count`, plus
+`states: [{id, specimen_observation_count, description_observation_count}]`.
+Counts use SQL aggregates, not observation record lists. Keys are counted once
+across explicit key-character selections and keys selecting descriptions with an
+observation for the character. Missing characters return `404`. These reads and
+atomic creation require the same Firebase admin claim as existing taxonomy APIs.
+
+The editor loads the current definition and usage before showing editable fields.
+Any existing membership, observation, or key use triggers the shared global
+character warning and requires acknowledgement before changes. Shared definition
+edits can affect many observations, descriptions, and keys. Existing PATCH type
+and unit protections remain in force. Existing state names/definitions/order are
+preserved by this first editor; it can append states and delete unused states.
+State usage is inspected before deletion; used states are disabled in the UI and
+the backend still rechecks both observation layers and preserves FK conflicts.
+Concurrent conflicts are displayed as controlled errors, never bypassed.
+
+“Create a new interpretation” copies the source name, description, region, data
+type, unit, visibility, and ordered state definitions into an editable creation
+form. Saving uses the atomic creation endpoint and allocates new global character
+and state IDs. It never updates the source or transfers its observations. Reuse is
+preferred when scientific definitions agree; copying is the preferred starting
+point when meanings, boundaries, or state systems substantially differ. No new
+character-derivation schema relationship is introduced. The admin-wide ownership
+and visibility authorization gap described above is unchanged.

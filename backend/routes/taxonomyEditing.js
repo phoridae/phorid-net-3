@@ -3,6 +3,7 @@ const pool = require("../dbTaxonomy");
 const requireAdmin = require("../middleware/requireAdmin");
 const { specimenObservations, withSpecimenSpecies } = require("../services/taxonomyProvenance");
 const gbifTaxonomy = require("../services/gbifTaxonomy");
+const { charactersWithStates } = require("../services/taxonomyCharacters");
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -52,6 +53,7 @@ const characterFields = {
   name: text(255, false), description: text(65535), anatomical_region: text(128),
   data_type: choice(["categorical", "numeric_range"]), unit: text(64), visibility,
 };
+const stateFields = { name: text(255, false), description: text(65535), display_order: order };
 const descriptionFields = {
   workspace_id: identifier, species_id: identifier,
   sex_scope: choice(["general", "female", "male"]),
@@ -225,6 +227,28 @@ router.delete("/workspaces/:id/species/:speciesId", mutation(async (req, db) => 
   await db.query("DELETE FROM workspace_species WHERE workspace_id = ? AND species_id = ?", params);
 }, 204));
 
+// One transaction avoids orphaned characters/states when a later request fails.
+// Copies use the same endpoint with fresh definitions, never original state IDs.
+router.post("/characters/with-states", mutation(async (req, db) => {
+  const values = body(req, { ...characterFields, workspace_id: identifier, states: (value) => {
+    if (!Array.isArray(value) || value.length > 200) fail(400, "states must be an array of at most 200 definitions");
+    return value.map((state, index) => ({ ...body({ body: state }, {
+      name: stateFields.name, description: stateFields.description,
+    }, ["name"]), display_order: index }));
+  } }, ["name"]);
+  const { states = [], workspace_id: workspaceId, ...fields } = values;
+  const type = fields.data_type || "categorical";
+  if (type === "categorical" && fields.unit != null) fail(400, "Categorical characters cannot have units");
+  if (type === "numeric_range" && states.length) fail(400, "Numeric characters cannot have categorical states");
+  if (workspaceId) await find(db, "workspaces", workspaceId);
+  const character = await insert(db, "characters", { ...fields, created_by_uid: req.user.uid });
+  for (const state of states) await insert(db, "character_states", { character_id: character.id, ...state });
+  if (workspaceId) {
+    await db.query("INSERT INTO workspace_characters (workspace_id, character_id, display_order) VALUES (?, ?, ?)", [workspaceId, character.id, 0]);
+  }
+  return (await charactersWithStates(db, [character]))[0];
+}, 201));
+
 router.post("/characters", mutation(async (req, db) => {
   const values = body(req, characterFields, ["name"]);
   if ((values.data_type || "categorical") === "categorical" && values.unit != null) fail(400, "Categorical characters cannot have units");
@@ -247,7 +271,7 @@ router.patch("/characters/:id", mutation(async (req, db) => {
   return update(db, "characters", req.params.id, values);
 }));
 router.post("/characters/:id/states", mutation(async (req, db) => {
-  const values = body(req, { name: text(255, false), description: text(65535), display_order: order }, ["name"]);
+  const values = body(req, stateFields, ["name"]);
   const character = await find(db, "characters", req.params.id);
   if (character.data_type !== "categorical") fail(400, "Only categorical characters have states");
   return insert(db, "character_states", { character_id: req.params.id, ...values });

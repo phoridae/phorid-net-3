@@ -3,6 +3,7 @@ const taxonomyPool = require("../dbTaxonomy");
 const requireAdmin = require("../middleware/requireAdmin");
 const { descriptionProvenance, withSpecimenSpecies } = require("../services/taxonomyProvenance");
 const gbifTaxonomy = require("../services/gbifTaxonomy");
+const { charactersWithStates, characterUsage } = require("../services/taxonomyCharacters");
 
 const router = express.Router();
 
@@ -14,6 +15,33 @@ function searchQuery(req) {
   }
   return req.query.q.trim();
 }
+router.get("/characters/search", async (req, res, next) => {
+  try {
+    const terms = searchQuery(req).split(/\s+/).slice(0, 8);
+    const conditions = terms.map(() => "(name LIKE ? ESCAPE '!' OR anatomical_region LIKE ? ESCAPE '!' OR description LIKE ? ESCAPE '!')");
+    const params = terms.flatMap((term) => Array(3).fill(`%${term.replace(/[!%_]/g, "!$&")}%`));
+    const [characters] = await taxonomyPool.query(`SELECT * FROM characters
+      WHERE ${conditions.join(" AND ")} ORDER BY name, id LIMIT 30`, params);
+    res.json(await charactersWithStates(taxonomyPool, characters));
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
+router.get("/characters/:id", async (req, res, next) => {
+  try {
+    const [characters] = await taxonomyPool.query("SELECT * FROM characters WHERE id = ?", [req.params.id]);
+    if (!characters.length) return res.status(404).json({ error: "Character not found" });
+    res.json((await charactersWithStates(taxonomyPool, characters))[0]);
+  } catch (error) { next(error); }
+});
+router.get("/characters/:id/usage", async (req, res, next) => {
+  try {
+    const [characters] = await taxonomyPool.query("SELECT id FROM characters WHERE id = ?", [req.params.id]);
+    if (!characters.length) return res.status(404).json({ error: "Character not found" });
+    res.json(await characterUsage(taxonomyPool, req.params.id));
+  } catch (error) { next(error); }
+});
 router.get("/species/search", async (req, res, next) => {
   try {
     const terms = searchQuery(req).split(/\s+/).slice(0, 8);

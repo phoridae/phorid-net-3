@@ -79,7 +79,7 @@ test("every editing endpoint is admin-only before a connection is acquired", asy
     ["PUT", "/descriptions/1/observations/1/specimen-evidence"],
     ["PUT", "/descriptions/1/observations/1/publication-evidence"],
     ["POST", "/descriptions/1/publications"], ["DELETE", "/descriptions/1/publications/1"],
-    ["POST", "/workspaces/1/species/import"],
+    ["POST", "/workspaces/1/species/import"], ["POST", "/characters/with-states"],
   ];
   const before = acquired;
   for (const [method, url] of routes) {
@@ -969,6 +969,118 @@ test("manual WIP creation supports meaningful code names, epithets and no extern
 
 test("species search and external lookup require admin claims without client-side ownership filtering", async () => {
   for (const url of ["/species/search?q=Apocephalus", "/lookup/gbif/taxa?q=Apocephalus"]) {
+    assert.equal((await request("GET", url, undefined, null, readRouter)).status, 401);
+    assert.equal((await request("GET", url, undefined, "member", readRouter)).status, 403);
+  }
+});
+
+test("global character search includes ordered states and matches name, region and definition", async () => {
+  await query("UPDATE characters SET anatomical_region = 'Thorax', description = 'Anepisternal setation' WHERE id = 1");
+  await query("UPDATE character_states SET display_order = 2 WHERE id = 1");
+  for (const q of ["Setae", "Thorax", "Anepisternal", "Thorax setation"]) {
+    const response = await request("GET", `/characters/search?q=${encodeURIComponent(q)}`, undefined, "admin", readRouter);
+    assert.equal(response.status, 200, response.error?.message);
+    assert.equal(response.body.length, 1);
+    assert.equal(response.body[0].id, "1");
+    assert.equal(response.body[0].data_type, "categorical");
+    assert.equal(response.body[0].visibility, "private");
+    assert.deepEqual(response.body[0].states.map((state) => state.id), ["2", "1"]);
+  }
+  assert.deepEqual((await request("GET", "/characters/search?q=%25%25", undefined, "admin", readRouter)).body, []);
+  assert.equal((await request("GET", "/characters/search?q=a", undefined, "admin", readRouter)).status, 400);
+  assert.equal((await request("GET", "/characters/999", undefined, "admin", readRouter)).status, 404);
+});
+
+test("character creation with states and workspace membership is atomic and ordered", async () => {
+  const response = await request("POST", "/characters/with-states", {
+    workspace_id: "1", name: "Anepisternal setae", anatomical_region: "Thorax", visibility: "shared",
+    states: [{ name: "bare", description: "No setae" }, { name: "small setulae" }],
+  });
+  assert.equal(response.status, 201, response.error?.message);
+  assert.equal(response.body.created_by_uid, "editor");
+  assert.equal(response.body.data_type, "categorical");
+  assert.deepEqual(response.body.states.map((state) => [state.name, state.display_order]), [["bare", 0], ["small setulae", 1]]);
+  const membership = await query("SELECT * FROM workspace_characters WHERE character_id = ?", [response.body.id]);
+  assert.equal(membership.length, 1);
+  assert.equal(membership[0].workspace_id, 1);
+  const read = await request("GET", `/characters/${response.body.id}`, undefined, "admin", readRouter);
+  assert.deepEqual(read.body, response.body);
+});
+
+test("numeric character creation has a unit and no categorical states", async () => {
+  const response = await request("POST", "/characters/with-states", { workspace_id: "1", name: "Wing length", data_type: "numeric_range", unit: "mm" });
+  assert.equal(response.status, 201);
+  assert.equal(response.body.unit, "mm");
+  assert.deepEqual(response.body.states, []);
+  for (const fields of [
+    { data_type: "numeric_range", states: [{ name: "invalid" }] },
+    { data_type: "categorical", unit: "mm" }, { states: [{ name: "" }] },
+    { states: [{ name: "a", id: "1" }] }, { states: "invalid" }, { created_by_uid: "forged" },
+  ]) assert.equal((await request("POST", "/characters/with-states", { name: "Invalid", ...fields })).status, 400);
+});
+
+test("duplicate states and failed membership roll back new character and states", async (t) => {
+  const beforeCharacters = await query("SELECT * FROM characters");
+  const beforeStates = await query("SELECT * FROM character_states");
+  const duplicate = await request("POST", "/characters/with-states", { workspace_id: "1", name: "Duplicate states", states: [{ name: "bare" }, { name: "bare" }] });
+  assert.equal(duplicate.status, 409);
+  assert.doesNotMatch(duplicate.body.error, /UNIQUE|constraint|INSERT/);
+  assert.deepEqual(await query("SELECT * FROM characters"), beforeCharacters);
+  assert.deepEqual(await query("SELECT * FROM character_states"), beforeStates);
+  const original = db.query;
+  t.mock.method(db, "query", async (sql, params) => {
+    if (sql.startsWith("INSERT INTO workspace_characters")) throw Object.assign(new Error("Membership conflict"), { code: "ER_DUP_ENTRY" });
+    return original(sql, params);
+  });
+  assert.equal((await request("POST", "/characters/with-states", { workspace_id: "1", name: "Failed membership", states: [{ name: "first" }] })).status, 409);
+  assert.deepEqual(await query("SELECT * FROM characters"), beforeCharacters);
+  assert.deepEqual(await query("SELECT * FROM character_states"), beforeStates);
+});
+
+test("character usage counts both observation layers, state usage and distinct keys", async () => {
+  const specimenId = await createSpecimen();
+  await assertObservation(specimenId);
+  await put(1, { state_ids: [1, 2] });
+  await query("INSERT INTO key_characters (key_id, character_id) VALUES (1,1)");
+  await query("INSERT INTO key_descriptions (key_id, description_id) VALUES (1,1)");
+  const response = await request("GET", "/characters/1/usage", undefined, "admin", readRouter);
+  assert.equal(response.status, 200, response.error?.message);
+  assert.deepEqual(response.body, {
+    workspace_count: 2, specimen_observation_count: 1, description_observation_count: 1, key_count: 1,
+    states: [{ id: "1", specimen_observation_count: 1, description_observation_count: 1 }, { id: "2", specimen_observation_count: 0, description_observation_count: 1 }],
+  });
+  // A key selecting a description also depends on its observed character.
+  await query("DELETE FROM key_characters WHERE key_id = 1");
+  assert.equal((await request("GET", "/characters/1/usage", undefined, "admin", readRouter)).body.key_count, 1);
+  assert.equal((await request("GET", "/characters/999/usage", undefined, "admin", readRouter)).status, 404);
+  assert.equal((await request("DELETE", "/characters/1/states/1")).status, 409);
+  await put(1, { state_ids: [2] });
+  const specimenConflict = await request("DELETE", "/characters/1/states/1");
+  assert.equal(specimenConflict.status, 409);
+  assert.match(specimenConflict.body.error, /specimen observations/);
+});
+
+test("new interpretation creates distinct global character/state IDs without changing the source", async () => {
+  const source = (await request("GET", "/characters/1", undefined, "admin", readRouter)).body;
+  const { name, description, anatomical_region, data_type, unit, visibility } = source;
+  const copy = await request("POST", "/characters/with-states", { workspace_id: "1", name, description, anatomical_region, data_type, unit, visibility,
+    states: source.states.map(({ name, description }) => ({ name, description })),
+  });
+  assert.equal(copy.status, 201);
+  assert.notEqual(copy.body.id, source.id);
+  assert.deepEqual(copy.body.states.map((state) => state.name), source.states.map((state) => state.name));
+  assert.ok(copy.body.states.every((state) => !source.states.some((old) => old.id === state.id)));
+  assert.deepEqual((await request("GET", "/characters/1", undefined, "admin", readRouter)).body, source);
+  assert.equal((await request("POST", "/workspaces/2/characters", { character_id: copy.body.id })).status, 201);
+  assert.equal((await request("POST", "/workspaces/2/characters", { character_id: copy.body.id })).status, 409);
+  assert.equal((await request("DELETE", `/workspaces/1/characters/${copy.body.id}`)).status, 204);
+  assert.equal((await query("SELECT * FROM characters WHERE id = ?", [copy.body.id])).length, 1);
+  assert.equal((await query("SELECT * FROM character_states WHERE character_id = ?", [copy.body.id])).length, 2);
+  assert.equal((await query("SELECT * FROM workspace_characters WHERE character_id = ?", [copy.body.id])).length, 1);
+});
+
+test("global character search, detail and usage are admin-only", async () => {
+  for (const url of ["/characters/search?q=setae", "/characters/1", "/characters/1/usage"]) {
     assert.equal((await request("GET", url, undefined, null, readRouter)).status, 401);
     assert.equal((await request("GET", url, undefined, "member", readRouter)).status, 403);
   }

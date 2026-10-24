@@ -1,6 +1,6 @@
 import { auth } from "../../firebase";
 import { apiUrl } from "./config";
-import { fetchTaxonomyWorkspaces, importWorkspaceSpecies, removeWorkspaceSpecies } from "./taxonomy";
+import { addCharacterState, addWorkspaceCharacter, createCharacterWithStates, fetchCharacterUsage, fetchTaxonomyCharacter, fetchTaxonomyWorkspaces, fetchWorkspaceCharacters, importWorkspaceSpecies, removeCharacterState, removeWorkspaceCharacter, removeWorkspaceSpecies, searchTaxonomyCharacters, updateTaxonomyCharacter } from "./taxonomy";
 
 jest.mock("../../firebase", () => ({ auth: { currentUser: null } }));
 const originalFetch = global.fetch;
@@ -57,4 +57,34 @@ test("membership DELETE handles an empty 204 response and preserves controlled c
   expect(fetch).toHaveBeenCalledWith(apiUrl("/api/taxonomy/workspaces/4/species/2"), expect.objectContaining({ method: "DELETE" }));
   fetch.mockResolvedValueOnce({ ok: false, status: 409, json: async () => ({ error: "Descriptions are used by an identification key" }) });
   await expect(removeWorkspaceSpecies("4", "2")).rejects.toMatchObject({ status: 409 });
+});
+
+test.each([
+  [() => fetchWorkspaceCharacters("4"), "/workspaces/4/characters"],
+  [() => searchTaxonomyCharacters("Thorax setae"), "/characters/search?q=Thorax%20setae"],
+  [() => fetchTaxonomyCharacter("9007199254740993"), "/characters/9007199254740993"],
+  [() => fetchCharacterUsage("1"), "/characters/1/usage"],
+])("character reads use authenticated taxonomy requests (%#)", async (request, path) => {
+  fetch.mockResolvedValue({ ok: true, json: async () => [] });
+  await request();
+  expect(fetch).toHaveBeenCalledWith(apiUrl(`/api/taxonomy${path}`), expect.objectContaining({ headers: { Authorization: "Bearer firebase-token" } }));
+});
+
+test.each([
+  [() => createCharacterWithStates({ name: "Setae", workspace_id: "4", states: [{ name: "bare" }] }), "/characters/with-states", "POST", { name: "Setae", workspace_id: "4", states: [{ name: "bare" }] }],
+  [() => updateTaxonomyCharacter("1", { description: "Definition" }), "/characters/1", "PATCH", { description: "Definition" }],
+  [() => addWorkspaceCharacter("4", "1"), "/workspaces/4/characters", "POST", { character_id: "1" }],
+  [() => addCharacterState("1", { name: "bare", display_order: 0 }), "/characters/1/states", "POST", { name: "bare", display_order: 0 }],
+])("character writes preserve JSON bodies and server authorization (%#)", async (request, path, method, body) => {
+  fetch.mockResolvedValue({ ok: true, json: async () => ({ id: "1" }) });
+  await request();
+  expect(fetch).toHaveBeenCalledWith(apiUrl(`/api/taxonomy${path}`), expect.objectContaining({ method, body: JSON.stringify(body), headers: { Authorization: "Bearer firebase-token", "Content-Type": "application/json" } }));
+});
+
+test("character membership and state DELETEs handle 204 without deleting the global character", async () => {
+  fetch.mockResolvedValue({ ok: true, status: 204 });
+  await expect(removeWorkspaceCharacter("4", "1")).resolves.toBeNull();
+  await expect(removeCharacterState("1", "2")).resolves.toBeNull();
+  expect(fetch).toHaveBeenNthCalledWith(1, apiUrl("/api/taxonomy/workspaces/4/characters/1"), expect.objectContaining({ method: "DELETE" }));
+  expect(fetch).toHaveBeenNthCalledWith(2, apiUrl("/api/taxonomy/characters/1/states/2"), expect.objectContaining({ method: "DELETE" }));
 });

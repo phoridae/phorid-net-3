@@ -4,11 +4,12 @@ import { MemoryRouter, Navigate, Route, Routes, useLocation, useNavigate } from 
 import TaxonomyWorkbench from "./TaxonomyWorkbench";
 import TaxonomySection, { taxonomySections } from "../components/taxonomy/TaxonomySection";
 import SpeciesManager from "../components/taxonomy/SpeciesManager";
+import CharacterManager from "../components/taxonomy/CharacterManager";
 import { useAuth } from "../auth/AuthContext";
-import { fetchTaxonomyWorkspaces, fetchWorkspaceSpecies } from "../utils/api/taxonomy";
+import { fetchTaxonomyWorkspaces, fetchWorkspaceCharacters, fetchWorkspaceSpecies } from "../utils/api/taxonomy";
 
 jest.mock("../auth/AuthContext", () => ({ useAuth: jest.fn() }));
-jest.mock("../utils/api/taxonomy", () => ({ fetchTaxonomyWorkspaces: jest.fn(), fetchWorkspaceSpecies: jest.fn() }));
+jest.mock("../utils/api/taxonomy", () => ({ fetchTaxonomyWorkspaces: jest.fn(), fetchWorkspaceSpecies: jest.fn(), fetchWorkspaceCharacters: jest.fn() }));
 
 const workspaces = [
   { id: "9007199254740993", name: "Canada revision", description: "Canadian research", visibility: "private", owner_uid: "another-researcher" },
@@ -33,7 +34,7 @@ function TestRouter({ children }) {
       <Routes>
         <Route path="/admin/taxonomy" element={children}>
           <Route index element={<Navigate to="species" replace />} />
-          {taxonomySections.map(({ key }) => <Route key={key} path={key} element={key === "species" ? <SpeciesManager /> : <TaxonomySection sectionKey={key} />} />)}
+          {taxonomySections.map(({ key }) => <Route key={key} path={key} element={key === "species" ? <SpeciesManager /> : key === "characters" ? <CharacterManager /> : <TaxonomySection sectionKey={key} />} />)}
           <Route path="*" element={<Navigate to="/admin/taxonomy/species" replace />} />
         </Route>
       </Routes>
@@ -53,6 +54,7 @@ beforeEach(() => {
   fetchTaxonomyWorkspaces.mockResolvedValue(workspaces);
   fetchWorkspaceSpecies.mockReset();
   fetchWorkspaceSpecies.mockResolvedValue([]);
+  fetchWorkspaceCharacters.mockResolvedValue([]);
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -150,7 +152,7 @@ test("section URLs and browser history stay in sync while sharing workspace stat
   await chooseWorkspace("Canada revision");
   for (const [name, path] of [["Specimens", "specimens"], ["Characters", "characters"], ["Data Entry", "data-entry"], ["Descriptions", "descriptions"], ["Keys", "keys"]]) {
     fireEvent.click(screen.getByRole("tab", { name }));
-    expect(await screen.findByRole("heading", { name })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: name === "Characters" ? "Characters in this workspace" : name })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByLabelText("Current path")).toHaveTextContent(`/admin/taxonomy/${path}`);
     expect(screen.getByLabelText("Current workspace")).toHaveTextContent("Canada revision");

@@ -66,6 +66,17 @@
 - Characters and states are global reusable definitions. Specimen observations
   are global attributed evidence. Workspaces choose which species and characters
   a researcher actively works with; they may reuse the same global entities.
+- Workspace character membership is only a working-set relationship, not scientific
+  ownership. Reuse a character when its definition and states agree with the
+  researcher's interpretation. Substantively different meanings, boundaries, or
+  state systems should use a distinct global character and distinct states.
+- Editing a shared character can affect observations, descriptions, and keys in
+  many workspaces. The Character Manager shows usage counts and requires an
+  acknowledgement before shared edits. Copying through “Create a new
+  interpretation” is the preferred starting point for alternative definitions;
+  the copy has fresh character/state IDs and leaves the original evidence intact.
+  No derivation relationship is added to the schema. Existing state definitions
+  are preserved in the editor; used states cannot be deleted.
 - Identification keys are independent of workspaces.
 - A key selects exact species_descriptions, not merely species. Alternative
   descriptions remain separate candidates. Filtering continues to use only
