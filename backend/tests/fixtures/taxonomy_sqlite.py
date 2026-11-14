@@ -39,6 +39,20 @@ for table, definition in re.findall(r'CREATE TABLE `(\w+)` \(\n([\s\S]*?)\n\)', 
         columns.append(foreign)
     statements.append('CREATE TABLE `' + table + '` (' + ',\n'.join(columns) + ');')
 
+# The cache DDL is checked against the configured database before implementation.
+# Exercise real token matching/ranking SQL without using a research DB connection.
+cache_source = (Path(__file__).resolve().parents[3] / 'gbif_sync_tooling/gbif_tables.sql').read_text()
+cache_definition = re.search(r'CREATE TABLE IF NOT EXISTS gbif_occurrence_phoridae \(([\s\S]*?)\n\) ENGINE', cache_source).group(1)
+cache_columns = []
+for line in cache_definition.splitlines():
+    column = line.strip().rstrip(',')
+    if not column or column.startswith('INDEX '):
+        continue
+    column = re.sub(r'BIGINT UNSIGNED', 'INTEGER', column)
+    column = column.replace(' ON UPDATE CURRENT_TIMESTAMP', '')
+    cache_columns.append(column)
+statements.append('CREATE TABLE gbif_occurrence_phoridae (' + ',\n'.join(cache_columns) + ');')
+
 SCHEMA = '\n'.join(statements) + """
 INSERT INTO identification_keys(id,name) VALUES (1,'Fixture key');
 INSERT INTO workspaces(id,name) VALUES (1,'Canada'), (2,'USA');

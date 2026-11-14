@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useOutletContext } from "react-router-dom";
 import CharacterManager from "./CharacterManager";
 import { addCharacterState, addWorkspaceCharacter, createCharacterWithStates, fetchCharacterUsage, fetchTaxonomyCharacter, fetchWorkspaceCharacters, removeCharacterState, removeWorkspaceCharacter, searchTaxonomyCharacters, updateTaxonomyCharacter } from "../../utils/api/taxonomy";
@@ -210,4 +210,104 @@ test("global character search failures can be retried", async () => {
   searchTaxonomyCharacters.mockResolvedValue([categorical]);
   fireEvent.click(screen.getByRole("button", { name: "Retry search" }));
   expect(await within(screen.getByRole("dialog")).findByText(categorical.description)).toBeInTheDocument();
+});
+
+async function openCreate(name) {
+  await openAdd();
+  fireEvent.click(screen.getByRole("button", { name: "Create new character" }));
+  fireEvent.change(screen.getByLabelText("Name"), { target: { value: name } });
+}
+
+test("creation debounces name lookup and warns about normalized exact names with definition details", async () => {
+  searchTaxonomyCharacters.mockResolvedValue([categorical]);
+  await openCreate("Anepisternal");
+  fireEvent.change(screen.getByLabelText("Name"), { target: { value: "  ANEPISTERNAL—setae  " } });
+  expect(searchTaxonomyCharacters).not.toHaveBeenCalled();
+  await screen.findByText("A global character with the same name already exists.");
+  expect(searchTaxonomyCharacters).toHaveBeenCalledWith("anepisternal setae", expect.objectContaining({ signal: expect.any(AbortSignal) }));
+  expect(searchTaxonomyCharacters).toHaveBeenCalledTimes(2);
+  const warning = within(screen.getByRole("alert"));
+  expect(warning.getByText(categorical.name)).toBeInTheDocument();
+  expect(warning.getByText("Thorax · Categorical")).toBeInTheDocument();
+  expect(warning.getByText("bare")).toBeInTheDocument();
+  expect(warning.getByText("setose")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Create and add to workspace" })).toBeEnabled();
+});
+
+test("creation suggests fuzzy names and shows numeric units", async () => {
+  // The full search misses the different inflection; the broader prefix finds it.
+  searchTaxonomyCharacters.mockImplementation(async (q) => q === "lengt" ? [numeric] : []);
+  await openCreate("Body lengths");
+  await screen.findByText("A similar global character may already exist.");
+  const suggestion = within(screen.getByRole("alert"));
+  expect(suggestion.getByText("Body length")).toBeInTheDocument();
+  expect(suggestion.getByText("General · Numeric range")).toBeInTheDocument();
+  expect(suggestion.getByText("Unit: mm")).toBeInTheDocument();
+  expect(screen.queryByText("A global character with the same name already exists.")).not.toBeInTheDocument();
+});
+
+test("reuse from the creation warning adds the selected existing ID without creating a record", async () => {
+  const alternative = { ...categorical, id: "33", anatomical_region: "Head" };
+  searchTaxonomyCharacters.mockResolvedValue([categorical, alternative]);
+  await openCreate(categorical.name);
+  await screen.findByText("A global character with the same name already exists.");
+  const warning = within(screen.getByRole("alert"));
+  // Separate records with the same name are all preserved for selection.
+  expect(warning.getAllByText(categorical.name)).toHaveLength(2);
+  fireEvent.click(warning.getAllByRole("button", { name: "Use existing character" })[1]);
+  await screen.findByText(`${categorical.name} added to workspace.`);
+  expect(addWorkspaceCharacter).toHaveBeenCalledWith("4", "33");
+  expect(createCharacterWithStates).not.toHaveBeenCalled();
+});
+
+test("continue creating new dismisses the warning and permits a duplicate name", async () => {
+  searchTaxonomyCharacters.mockResolvedValue([categorical]);
+  await openCreate(categorical.name);
+  await screen.findByText("A global character with the same name already exists.");
+  fireEvent.change(screen.getByLabelText("Description"), { target: { value: "A distinct interpretation" } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue creating new" }));
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Name")).toHaveValue(categorical.name);
+  fireEvent.click(screen.getByRole("button", { name: "Create and add to workspace" }));
+  await screen.findByText(`${categorical.name} added to workspace.`);
+  expect(createCharacterWithStates).toHaveBeenCalledWith(expect.objectContaining({ name: categorical.name, description: "A distinct interpretation", workspace_id: "4" }));
+  expect(addWorkspaceCharacter).not.toHaveBeenCalled();
+});
+
+test("duplicate names can also be created directly while the warning is visible", async () => {
+  searchTaxonomyCharacters.mockResolvedValue([categorical]);
+  await openCreate(categorical.name);
+  await screen.findByText("A global character with the same name already exists.");
+  fireEvent.click(screen.getByRole("button", { name: "Create and add to workspace" }));
+  await screen.findByText(`${categorical.name} added to workspace.`);
+  expect(createCharacterWithStates).toHaveBeenCalledWith(expect.objectContaining({ name: categorical.name }));
+});
+
+test.each([{ results: [] }, { results: [categorical] }])("no similar name shows no warning even if search matches other metadata (%j)", async ({ results }) => {
+  searchTaxonomyCharacters.mockResolvedValue(results);
+  await openCreate("Thorax dimensions");
+  await waitFor(() => expect(searchTaxonomyCharacters).toHaveBeenCalled());
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("changing names clears the warning and ignores stale search results", async () => {
+  let resolveOld;
+  searchTaxonomyCharacters.mockImplementation(() => new Promise((resolve) => { resolveOld = resolve; }));
+  // Use a two-character query so only one request is needed.
+  await openCreate("Ab");
+  await waitFor(() => expect(searchTaxonomyCharacters).toHaveBeenCalledTimes(1));
+  const signal = searchTaxonomyCharacters.mock.calls[0][1].signal;
+  fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Z" } });
+  expect(signal.aborted).toBe(true);
+  await act(async () => resolveOld([{ ...categorical, name: "Ab" }]));
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("a failed advisory search does not prevent creation", async () => {
+  searchTaxonomyCharacters.mockRejectedValue(new Error("Search unavailable"));
+  await openCreate(categorical.name);
+  await screen.findByText("Similar global characters could not be checked. You can still create this character.");
+  fireEvent.click(screen.getByRole("button", { name: "Create and add to workspace" }));
+  await screen.findByText(`${categorical.name} added to workspace.`);
+  expect(createCharacterWithStates).toHaveBeenCalledWith(expect.objectContaining({ name: categorical.name }));
 });

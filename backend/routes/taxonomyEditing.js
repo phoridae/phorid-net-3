@@ -4,6 +4,8 @@ const requireAdmin = require("../middleware/requireAdmin");
 const { specimenObservations, withSpecimenSpecies } = require("../services/taxonomyProvenance");
 const gbifTaxonomy = require("../services/gbifTaxonomy");
 const { charactersWithStates } = require("../services/taxonomyCharacters");
+const gbifSpecimens = require("../services/gbifSpecimens");
+const { withSpecimenSummary } = require("../services/taxonomySpecimens");
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -168,7 +170,7 @@ router.post("/species", mutation(async (req, db) => {
   if (status === "work_in_progress" && !values.specific_epithet?.trim() && !values.working_name?.trim()) fail(400, "Work-in-progress species without an epithet require working_name");
   return insert(db, "species", values);
 }, 201));
-router.post("/workspaces/:id/species/import", async (req, res, next) => {
+async function resolveSpeciesImport(req, res, next) {
   try {
     const values = body(req, { col_xr_taxon_key: text(64, false) }, ["col_xr_taxon_key"]);
     // Finish remote reads before taking database locks. Ignore client-supplied names/legacy IDs.
@@ -178,9 +180,9 @@ router.post("/workspaces/:id/species/import", async (req, res, next) => {
     if (failure.status) return res.status(failure.status).json({ error: failure.message });
     next(failure);
   }
-}, mutation(async (req, db) => {
-  await find(db, "workspaces", req.params.id);
-  const values = body({ body: req.importSpecies }, speciesFields);
+}
+async function reuseOrCreateSpecies(db, resolved) {
+  const values = body({ body: resolved }, speciesFields);
   async function matches() {
     return rows(db, "SELECT * FROM species WHERE col_xr_taxon_key = ? OR gbif_taxon_key = ? FOR UPDATE", [values.col_xr_taxon_key, values.gbif_taxon_key]);
   }
@@ -205,6 +207,12 @@ router.post("/workspaces/:id/species/import", async (req, res, next) => {
   const identifiers = { col_xr_taxon_key: species.col_xr_taxon_key || values.col_xr_taxon_key,
     gbif_taxon_key: species.gbif_taxon_key || values.gbif_taxon_key };
   if (identifiers.col_xr_taxon_key !== species.col_xr_taxon_key || identifiers.gbif_taxon_key !== species.gbif_taxon_key) species = await update(db, "species", species.id, identifiers);
+  return { species, created };
+}
+router.post("/species/import", resolveSpeciesImport, mutation(async (req, db) => reuseOrCreateSpecies(db, req.importSpecies)));
+router.post("/workspaces/:id/species/import", resolveSpeciesImport, mutation(async (req, db) => {
+  await find(db, "workspaces", req.params.id);
+  const { species, created } = await reuseOrCreateSpecies(db, req.importSpecies);
   const membership = await rows(db, "SELECT species_id FROM workspace_species WHERE workspace_id = ? AND species_id = ? FOR UPDATE", [req.params.id, species.id]);
   if (!membership.length) await db.query("INSERT INTO workspace_species (workspace_id, species_id) VALUES (?, ?)", [req.params.id, species.id]);
   return { species, workspace_id: req.params.id, created, already_in_workspace: membership.length > 0 };
@@ -415,11 +423,79 @@ const specimenFields = {
   species_id: identifier,
   reference_type: choice(["gbif", "local", "publication"]),
   gbif_occurrence_key: nullableId, publication_id: nullableId,
-  institution_code: text(64), catalog_number: text(128), specimen_label: text(255), notes: text(65535),
+  institution_code: text(64), collection_code: text(64), catalog_number: text(128), specimen_label: text(255), notes: text(65535),
 };
 async function validatePublication(db, publicationId) {
   if (publicationId != null) await find(db, "publications", publicationId);
 }
+// Static search paths precede /:id because this router also serves specimen details.
+router.get("/specimen-references/search", async (req, res, next) => {
+  try {
+    const q = req.query.q ?? "";
+    if (typeof q !== "string" || q.length > 200) fail(400, "q must be text of at most 200 characters");
+    const fields = ["CAST(sr.id AS CHAR)", "sr.institution_code", "sr.collection_code", "sr.catalog_number", "sr.specimen_label", "CAST(sr.gbif_occurrence_key AS CHAR)", "s.genus", "s.specific_epithet", "s.working_name"];
+    const terms = q.trim().split(/\s+/).filter(Boolean).slice(0, 8);
+    const conditions = terms.map(() => `(${fields.map((field) => `${field} LIKE ? ESCAPE '!'`).join(" OR ")})`);
+    const params = terms.flatMap((term) => fields.map(() => `%${term.replace(/[!%_]/g, "!$&")}%`));
+    const specimens = await rows(pool, `SELECT sr.*, (SELECT COUNT(*) FROM specimen_observations so WHERE so.specimen_reference_id = sr.id) AS observation_count
+      FROM specimen_references sr LEFT JOIN species s ON s.id = sr.species_id
+      ${conditions.length ? `WHERE ${conditions.join(" AND ")}` : ""}
+      ORDER BY CASE WHEN CAST(sr.id AS CHAR) = ? OR CAST(sr.gbif_occurrence_key AS CHAR) = ? THEN 1 ELSE 0 END DESC, sr.id DESC LIMIT 30`, [...params, q.trim(), q.trim()]);
+    res.json(await withSpecimenSummary(pool, specimens));
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
+router.get("/specimen-references/duplicates", async (req, res, next) => {
+  try {
+    const catalog = text(128, false)(req.query.catalog_number).trim();
+    const conditions = ["LOWER(TRIM(catalog_number)) = LOWER(?)"];
+    const params = [catalog];
+    for (const field of ["institution_code", "collection_code"]) {
+      const value = req.query[field] == null ? null : text(64)(req.query[field]).trim();
+      if (value) { conditions.push(`LOWER(TRIM(${field})) = LOWER(?)`); params.push(value); }
+    }
+    const specimens = await rows(pool, `SELECT * FROM specimen_references WHERE ${conditions.join(" AND ")} ORDER BY id LIMIT 30`, params);
+    res.json(await withSpecimenSpecies(pool, specimens));
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
+router.post("/specimen-references/import", async (req, res, next) => {
+  try {
+    req.importValues = body(req, { species_id: identifier, gbif_occurrence_key: identifier,
+      institution_code: specimenFields.institution_code, collection_code: specimenFields.collection_code, catalog_number: specimenFields.catalog_number,
+      specimen_label: specimenFields.specimen_label, notes: specimenFields.notes }, ["species_id", "gbif_occurrence_key"]);
+    if (!(await rows(pool, "SELECT id FROM species WHERE id = ?", [req.importValues.species_id])).length) fail(404, "species record not found");
+    const existing = await rows(pool, "SELECT id FROM specimen_references WHERE gbif_occurrence_key = ?", [req.importValues.gbif_occurrence_key]);
+    if (!existing.length) req.importCandidate = await gbifSpecimens.resolveOccurrence(req.importValues.gbif_occurrence_key);
+    next();
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+}, mutation(async (req, db) => {
+  const values = req.importValues;
+  await find(db, "species", values.species_id);
+  const matches = () => rows(db, "SELECT * FROM specimen_references WHERE gbif_occurrence_key = ? FOR UPDATE", [values.gbif_occurrence_key]);
+  let found = await matches();
+  let created = false;
+  if (!found.length) {
+    const candidate = req.importCandidate;
+    if (!candidate) fail(409, "The specimen changed during import; please retry");
+    const metadata = body({ body: { reference_type: "gbif", institution_code: candidate.institution_code, collection_code: candidate.collection_code,
+      catalog_number: candidate.catalog_number, ...values } }, specimenFields);
+    try { found = [await insert(db, "specimen_references", metadata)]; created = true; }
+    catch (error) {
+      if (error.code !== "ER_DUP_ENTRY") throw error;
+      found = await matches();
+      if (!found.length) throw error;
+    }
+  }
+  return { specimen: (await withSpecimenSpecies(db, found))[0], created };
+}));
 router.post("/specimen-references", mutation(async (req, db) => {
   const values = body(req, specimenFields, ["reference_type", "species_id"]);
   await find(db, "species", values.species_id);
@@ -428,9 +504,10 @@ router.post("/specimen-references", mutation(async (req, db) => {
 }, 201));
 router.get("/specimen-references/:id", async (req, res, next) => {
   try {
-    const [specimen] = await rows(pool, "SELECT * FROM specimen_references WHERE id = ?", [req.params.id]);
+    const [specimen] = await rows(pool, `SELECT sr.*, (SELECT COUNT(*) FROM specimen_observations so WHERE so.specimen_reference_id = sr.id) AS observation_count
+      FROM specimen_references sr WHERE sr.id = ?`, [req.params.id]);
     if (!specimen) return res.status(404).json({ error: "Specimen reference not found" });
-    res.json((await withSpecimenSpecies(pool, [specimen]))[0]);
+    res.json((await withSpecimenSummary(pool, [specimen]))[0]);
   } catch (error) { next(error); }
 });
 router.patch("/specimen-references/:id", mutation(async (req, db) => {

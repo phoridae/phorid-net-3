@@ -48,3 +48,12 @@ export const addCharacterState = (id, body) => taxonomyRequest(`/characters/${en
 export const removeCharacterState = (id, stateId) => taxonomyRequest(`/characters/${encodeURIComponent(id)}/states/${encodeURIComponent(stateId)}`, { method: "DELETE" });
 export const addWorkspaceCharacter = (id, characterId) => taxonomyRequest(`/workspaces/${encodeURIComponent(id)}/characters`, { method: "POST", body: { character_id: characterId } });
 export const removeWorkspaceCharacter = (id, characterId) => taxonomyRequest(`/workspaces/${encodeURIComponent(id)}/characters/${encodeURIComponent(characterId)}`, { method: "DELETE" });
+
+export const searchTaxonomySpecimens = (q, options) => taxonomyRequest(`/specimen-references/search?q=${encodeURIComponent(q)}`, options);
+export const fetchTaxonomySpecimen = (id, options) => taxonomyRequest(`/specimen-references/${encodeURIComponent(id)}`, options);
+export const findSpecimenDuplicates = (metadata) => taxonomyRequest(`/specimen-references/duplicates?${new URLSearchParams(metadata)}`);
+export const lookupGbifSpecimens = (q, source = "cache", options) => taxonomyRequest(`/lookup/gbif/specimens?${new URLSearchParams({ q, source })}`, options);
+export const createTaxonomySpecimen = (body) => taxonomyRequest("/specimen-references", { method: "POST", body });
+export const importTaxonomySpecimen = (body) => taxonomyRequest("/specimen-references/import", { method: "POST", body });
+export const updateTaxonomySpecimen = (id, body) => taxonomyRequest(`/specimen-references/${encodeURIComponent(id)}`, { method: "PATCH", body });
+export const importTaxonomySpecies = (colId) => taxonomyRequest("/species/import", { method: "POST", body: { col_xr_taxon_key: colId } });

@@ -1,6 +1,7 @@
 import { auth } from "../../firebase";
 import { apiUrl } from "./config";
 import { addCharacterState, addWorkspaceCharacter, createCharacterWithStates, fetchCharacterUsage, fetchTaxonomyCharacter, fetchTaxonomyWorkspaces, fetchWorkspaceCharacters, importWorkspaceSpecies, removeCharacterState, removeWorkspaceCharacter, removeWorkspaceSpecies, searchTaxonomyCharacters, updateTaxonomyCharacter } from "./taxonomy";
+import { createTaxonomySpecimen, fetchTaxonomySpecimen, findSpecimenDuplicates, importTaxonomySpecimen, importTaxonomySpecies, lookupGbifSpecimens, searchTaxonomySpecimens, updateTaxonomySpecimen } from "./taxonomy";
 
 jest.mock("../../firebase", () => ({ auth: { currentUser: null } }));
 const originalFetch = global.fetch;
@@ -87,4 +88,30 @@ test("character membership and state DELETEs handle 204 without deleting the glo
   await expect(removeCharacterState("1", "2")).resolves.toBeNull();
   expect(fetch).toHaveBeenNthCalledWith(1, apiUrl("/api/taxonomy/workspaces/4/characters/1"), expect.objectContaining({ method: "DELETE" }));
   expect(fetch).toHaveBeenNthCalledWith(2, apiUrl("/api/taxonomy/characters/1/states/2"), expect.objectContaining({ method: "DELETE" }));
+});
+
+test.each([
+  [() => searchTaxonomySpecimens("USNM 123"), "/specimen-references/search?q=USNM%20123"],
+  [() => fetchTaxonomySpecimen("9007199254740993"), "/specimen-references/9007199254740993"],
+  [() => findSpecimenDuplicates({ institution_code: "USNM", catalog_number: "123" }), "/specimen-references/duplicates?institution_code=USNM&catalog_number=123"],
+  [() => findSpecimenDuplicates({ institution_code: "LACM", collection_code: "ENT", catalog_number: "12345" }), "/specimen-references/duplicates?institution_code=LACM&collection_code=ENT&catalog_number=12345"],
+  [() => lookupGbifSpecimens("LACM wellsorum"), "/lookup/gbif/specimens?q=LACM+wellsorum&source=cache"],
+  [() => lookupGbifSpecimens("4021395742", "live_gbif"), "/lookup/gbif/specimens?q=4021395742&source=live_gbif"],
+])("global specimen reads use authenticated backend URLs without workspace IDs (%#)", async (request, path) => {
+  fetch.mockResolvedValue({ ok: true, json: async () => [] });
+  await request();
+  expect(fetch).toHaveBeenCalledWith(apiUrl(`/api/taxonomy${path}`), expect.objectContaining({ headers: { Authorization: "Bearer firebase-token" } }));
+});
+
+test.each([
+  [() => createTaxonomySpecimen({ species_id: "9", reference_type: "local" }), "/specimen-references", "POST", { species_id: "9", reference_type: "local" }],
+  [() => createTaxonomySpecimen({ species_id: "9", reference_type: "local", collection_code: "ENT" }), "/specimen-references", "POST", { species_id: "9", reference_type: "local", collection_code: "ENT" }],
+  [() => importTaxonomySpecimen({ species_id: "4", gbif_occurrence_key: "4021395742" }), "/specimen-references/import", "POST", { species_id: "4", gbif_occurrence_key: "4021395742" }],
+  [() => updateTaxonomySpecimen("17", { species_id: "9" }), "/specimen-references/17", "PATCH", { species_id: "9" }],
+  [() => updateTaxonomySpecimen("17", { collection_code: null }), "/specimen-references/17", "PATCH", { collection_code: null }],
+  [() => importTaxonomySpecies("8CYC6"), "/species/import", "POST", { col_xr_taxon_key: "8CYC6" }],
+])("global specimen/species writes preserve string IDs and JSON (%#)", async (request, path, method, body) => {
+  fetch.mockResolvedValue({ ok: true, json: async () => ({ id: "17" }) });
+  await request();
+  expect(fetch).toHaveBeenCalledWith(apiUrl(`/api/taxonomy${path}`), expect.objectContaining({ method, body: JSON.stringify(body), headers: { Authorization: "Bearer firebase-token", "Content-Type": "application/json" } }));
 });

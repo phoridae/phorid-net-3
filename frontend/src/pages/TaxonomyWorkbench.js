@@ -126,20 +126,16 @@ export default function TaxonomyWorkbench() {
             <Paragraph>Select a workspace to begin working with taxonomy data.</Paragraph>
           )}
         </Card>
-        {currentWorkspace ? (
-          <Tabs
+        <Tabs
             type="card"
             style={{ marginTop: 24 }}
             activeKey={activeSection}
             onChange={(section) => navigate(`/admin/taxonomy/${section}`)}
             items={taxonomySections.map(({ key, label }) => ({
-              key, label,
-              children: key === activeSection ? <Outlet context={{ currentWorkspace }} /> : null,
+              key, label, disabled: !currentWorkspace && key !== "specimens",
+              children: key === activeSection ? <Outlet context={{ currentWorkspace: currentWorkspace || null }} /> : null,
             }))}
-          />
-        ) : (
-          <Outlet context={{ currentWorkspace: null }} />
-        )}
+        />
       </div>
     </div>
   );

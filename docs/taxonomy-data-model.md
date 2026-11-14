@@ -106,6 +106,34 @@
   johnhash_phorid_research is a rebuildable/cacheable GBIF snapshot, not the
   authoritative identity link. Durable curated taxonomy records do not depend
   on its internal primary keys or cross-database foreign keys.
+- The Specimens manager searches global curated records independently of workspace
+  selection, including with no workspace selected. Specimen lookup uses one fuzzy
+  search interface: first the local GBIF research snapshot, then an explicit
+  “Search current GBIF” fallback for newer/missing records. Both sources normalize
+  to the same candidate shape. GBIF occurrence keys are durable external IDs stored
+  directly in taxonomy; research-cache row IDs never become specimen identities.
+- Each new specimen requires a current global species assignment; published and
+  WIP/code-name species are both valid. GBIF identification is only an import
+  suggestion, matched by COL XR, then legacy GBIF, then a unique exact scientific
+  name. The researcher confirms the assignment. Refreshes and repeated imports
+  never automatically change a curated assignment or rewrite evidence history.
+- Occurrence import is idempotent by GBIF occurrence key. Likely manual duplicates
+  based on institution/collection/catalog metadata are warnings, not a new uniqueness rule.
+- Specimen identity has separate, independently nullable components:
+  `institution_code` identifies the institution (for example LACM),
+  `collection_code` identifies the collection (for example ENT), and
+  `catalog_number` identifies the collection's catalog record (for example 12345).
+  Institution and collection codes allow 64 characters; catalog numbers allow 128.
+  GBIF/cache imports store collection code directly in the taxonomy specimen row.
+  `specimen_label` is free-text descriptive metadata, not a substitute for structured
+  collection code, and is not automatically assembled from these components.
+  Displays join available components cleanly, for example `LACM ENT 12345`.
+- Likely manual duplicate checks compare case-insensitive, trimmed values for all
+  supplied identity components. Without collection code, institution/catalog
+  matching remains available and includes records with null collection codes.
+  Omitting collection code on POST leaves it null; omitting it on PATCH preserves
+  its existing value. Explicit null clears it without changing species or evidence.
+- Character scoring belongs in the later Data Entry workflow, not Specimens.
 - Current API authorization is admin-wide. Workspace owner_uid and visibility
   metadata do not enforce owner/collaborator editing rights. The Species UI
   follows that server policy and does not use browser filtering as authorization.

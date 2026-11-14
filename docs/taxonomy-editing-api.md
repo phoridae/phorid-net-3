@@ -145,6 +145,11 @@ Specimen evidence endpoints:
 | Method | Route | Body / behavior |
 | --- | --- | --- |
 | POST | `/specimen-references` | `reference_type` and `species_id` required; other fields below optional |
+| GET | `/specimen-references/search?q=...` | Global curated search; empty query lists recent records |
+| GET | `/specimen-references/duplicates?catalog_number=...&institution_code=...&collection_code=...` | Likely manual duplicates; institution and collection optional |
+| GET | `/lookup/gbif/specimens?q=...&source=cache` | One fuzzy/exact lookup; `source=live_gbif` explicitly searches current GBIF |
+| POST | `/specimen-references/import` | `gbif_occurrence_key`, confirmed `species_id`, optional supported metadata |
+| POST | `/species/import` | `col_xr_taxon_key`; same species resolver/reuse transaction, without workspace membership |
 | GET | `/specimen-references/:id` | Specimen reference record with current species metadata |
 | PATCH | `/specimen-references/:id` | Supplied specimen fields only |
 | DELETE | `/specimen-references/:id` | `204`; description associations restrict deletion with `409` |
@@ -169,7 +174,17 @@ operations are transactional, deduplicate IDs, and accept empty arrays to clear 
 
 Specimen reference fields match the schema: `species_id`, `reference_type` (`gbif`, `local`,
 `publication`), nullable `gbif_occurrence_key`, `publication_id`, `institution_code`
-(64 characters), `catalog_number` (128), `specimen_label` (255), and `notes` (TEXT).
+(64 characters), `collection_code` (64), `catalog_number` (128), `specimen_label` (255), and `notes` (TEXT).
+Institution, collection, and catalog number are separate optional identity
+components: for example `LACM`, `ENT`, and `12345`. Each may independently be null.
+`specimen_label` is free-text descriptive metadata, not a substitute for collection
+code. GBIF/cache and live imports store collection code directly and do not stuff
+identity components into the label. The label stays empty unless explicitly supplied.
+Manual POST, PATCH, and occurrence import accept nullable `collection_code` up to
+64 characters; invalid types or excess length return `400`. Omitting it preserves
+existing client behavior: POST defaults to null, and PATCH leaves the current value
+unchanged. Explicit null clears the code. Search, detail, write responses, and
+nested description/provenance specimen metadata include the field as string/null.
 Publication IDs must exist when supplied; duplicate GBIF occurrence keys return
 `409`. IDs and occurrence keys serialize as strings. Deleting an unassociated
 specimen cascades its raw observations; a specimen still associated with a
@@ -482,6 +497,124 @@ Authorization remains the existing Firebase admin claim. Workspace owner_uid and
 `visibility=private` do not provide owner/collaborator restrictions. All admins can
 currently curate any workspace; collaborator editing permissions remain a backend
 gap. No browser filtering is used or described as a security mechanism.
+
+The Specimens manager at `/admin/taxonomy/specimens` is global and remains usable
+without selecting a workspace. Workspace changes preserve its search and do not
+add workspace filters or memberships. Character scoring is reserved for Data
+Entry. Curated search uses the durable taxonomy DB, matching internal record ID,
+institution code, collection code, catalog number, label, occurrence key, and current species
+genus/epithet/working name. Up to eight whitespace-separated terms must each match
+at least one field; SQL LIKE metacharacters are escaped. Exact record/occurrence
+IDs rank first, followed by recent IDs, with a 30-record limit. The empty search
+shows recent global records. Results and detail include string IDs, consistent
+nested current-species metadata, and an aggregate `observation_count` on search/detail.
+
+The specimen finder uses `johnhash_phorid_research.gbif_occurrence_phoridae` through
+the existing `dbGbif` pool. Its actual configured columns/indexes were inspected
+read-only. Routine lookup searches existing `scientific_name`,
+`accepted_scientific_name`, `species`, `genus`, `specific_epithet`,
+`institution_code`, `collection_code`, `catalog_number`, `recorded_by`, `locality`,
+`verbatim_locality`, `state_province`, `country`, and occurrence ID. Token matches use AND across
+terms and OR across fields. Exact institution/collection/catalog/species/genus
+terms rank before substrings, then preserved specimens, then occurrence ID.
+Canonical positive numeric queries of at least eight digits use exact `gbifid`
+primary-key lookup; include an institution or other term when searching an
+ambiguous long numeric catalog number. Short and leading-zero catalog tokens
+remain fuzzy text. Explicit import keys always resolve exactly, including short
+occurrence IDs. Fuzzy contains searches may scan
+the snapshot; no new research indexes or migrations are introduced.
+
+Live lookup is explicit via “Search current GBIF”; React only calls the authenticated
+taxonomy backend. Exact keys use `GET /v1/occurrence/{key}`. Broad lookup resolves
+the unique accepted Phoridae family from GBIF taxon search in the legacy Backbone,
+then calls `/v1/occurrence/search` with `q`, `familyKey`, and explicit Backbone
+`checklistKey`. It examines at most 100 upstream results, retains useful Phoridae
+voucher records matching every query token, prefers preserved specimens, and
+returns at most 30. Refine broad searches if needed. Deleted/missing exact keys
+yield an empty lookup; import of an unavailable occurrence returns `404`. Live
+timeouts/unavailability return controlled `504`/`502`; cache failure returns `503`.
+Cached results stay usable on live failure, and manual creation remains available.
+No live response is automatically written into the research snapshot.
+
+Both sources return `{results, source, query_type, limit:30}`, where `query_type`
+is `fuzzy` or `occurrence_key`. Each result contains:
+
+```json
+{
+  "gbif_occurrence_key": "1802551766",
+  "institution_code": "LACM",
+  "collection_code": "ENT",
+  "catalog_number": "12345",
+  "scientific_name": "Myriophora wellsorum",
+  "genus": "Myriophora",
+  "specific_epithet": "wellsorum",
+  "gbif_taxon_key": "9608828",
+  "col_xr_taxon_key": "8CYC6",
+  "country": "United States",
+  "locality": "California",
+  "event_date": "2024-05-12",
+  "recorded_by": null,
+  "basis_of_record": "PRESERVED_SPECIMEN",
+  "source": "live_gbif",
+  "existing_specimen_id": null,
+  "species_suggestion": null,
+  "species_match": null
+}
+```
+
+Unavailable fields are null. The legacy snapshot has no COL XR column, so cached
+COL keys are null. Live IDs are read independently from GBIF's taxonomic
+classifications; legacy keys never acquire COL semantics. Species suggestions
+prefer COL XR identity, then legacy GBIF identity, then one unambiguous exact
+published genus/epithet match. Name-only ambiguity is never automatically merged.
+The researcher must confirm a current assignment, may select another global
+published/WIP species, or import a suggested accepted species using the existing
+COL resolver through global `/species/import`. That route returns `{species,
+created}` with `200` and intentionally creates no workspace membership.
+
+Before displaying either source, the backend annotates an existing taxonomy
+specimen by its durable `gbif_occurrence_key`. Existing occurrences show “Already
+in taxonomy database” and open the curated record. The frontend also collapses
+cache/live hits by occurrence key, preferring the live presentation. Import
+accepts only the occurrence key, required species ID, and optional institution,
+collection, catalog, label, and notes. It resolves the occurrence server-side, enforces schema
+limits, and creates `reference_type=gbif` transactionally. Existing/retried imports
+return the existing record without changing its assignment or metadata; database
+uniqueness and duplicate-race recovery prevent a second occurrence record.
+The response is `200` with `{specimen, created}`. Validation is `400`, missing
+species/occurrence `404`, and relationship/concurrency conflicts controlled `409`.
+The direct specimen POST retains its existing duplicate-key `409` behavior.
+
+Manual creation uses the existing `reference_type=local` POST and requires a
+published or WIP species. Before saving catalog metadata, the UI checks exact
+case-insensitive, trimmed institution/collection/catalog matches through
+`/specimen-references/duplicates`. Catalog number is required for this check;
+every provided institution and collection code must agree. When collection is
+omitted or blank, matching falls back to institution/catalog and includes both
+null and known collection codes. This preserves useful warnings for older clients.
+It warns and offers existing records or explicit separate creation. This is a
+scientific review hint, not identity proof or a new uniqueness constraint.
+Different GBIF keys for the same physical voucher are likewise not automatically
+merged. Collection code is stored directly in its nullable taxonomy column. Forms
+place it between institution and catalog, and the table, lookup, duplicate panel,
+and detail compose available components such as `LACM ENT 12345`, `USNM 987654`,
+`ENT 12345`, or `12345`. Missing components do not introduce extra separators.
+Labels remain independent free text throughout creation, import, and editing.
+Other unsupported external metadata is shown during lookup and can be recorded
+in notes explicitly; no new schema columns are invented.
+
+Editing retains the specimen's global internal ID and external occurrence identity
+while allowing supported metadata and current `species_id` changes. GBIF-linked
+records are labelled accordingly. Legacy null assignments remain readable and
+are not migrated automatically; saving requires a non-null assignment. The UI
+states that changing the current species assignment does not alter observations
+or evidence. Existing PATCH protections preserve states, publication associations,
+description-specimen relationships, synthesized observations, evidence links, and
+provenance. Neither a retry nor a GBIF refresh silently reassigns a curated record.
+
+GBIF references: [Occurrence API](https://techdocs.gbif.org/en/openapi/v1/occurrence),
+[Species API](https://techdocs.gbif.org/en/openapi/v1/species),
+[multiple-taxonomy response format](https://techdocs.gbif.org/en/data-processing/taxonomy-interpretation).
 
 Primary service references:
 [COL search](https://catalogueoflife.github.io/rcol/reference/clb_usage_search.html),

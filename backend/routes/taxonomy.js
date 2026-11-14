@@ -4,10 +4,25 @@ const requireAdmin = require("../middleware/requireAdmin");
 const { descriptionProvenance, withSpecimenSpecies } = require("../services/taxonomyProvenance");
 const gbifTaxonomy = require("../services/gbifTaxonomy");
 const { charactersWithStates, characterUsage } = require("../services/taxonomyCharacters");
+const gbifSpecimens = require("../services/gbifSpecimens");
+const { annotateCandidates } = require("../services/taxonomySpecimens");
 
 const router = express.Router();
 
 router.use(requireAdmin);
+
+router.get("/lookup/gbif/specimens", async (req, res, next) => {
+  try {
+    const { q, key } = gbifSpecimens.parseQuery(req.query.q);
+    const source = req.query.source || "cache";
+    if (!["cache", "live_gbif"].includes(source)) return res.status(400).json({ error: "source must be cache or live_gbif" });
+    const candidates = await (source === "cache" ? gbifSpecimens.searchCache(q) : gbifSpecimens.searchLive(q));
+    res.json({ results: await annotateCandidates(taxonomyPool, candidates), source, query_type: key ? "occurrence_key" : "fuzzy", limit: 30 });
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    next(error);
+  }
+});
 
 function searchQuery(req) {
   if (typeof req.query.q !== "string" || req.query.q.trim().length < 2 || req.query.q.length > 200) {
@@ -446,6 +461,7 @@ router.get("/descriptions/:id", async (req, res, next) => {
               sr.gbif_occurrence_key,
               sr.publication_id,
               sr.institution_code,
+              sr.collection_code,
               sr.catalog_number,
               sr.specimen_label,
               sr.notes,
@@ -458,7 +474,7 @@ router.get("/descriptions/:id", async (req, res, next) => {
             FROM description_specimens ds
             JOIN specimen_references sr ON sr.id = ds.specimen_reference_id
             WHERE ds.description_id = ?
-            ORDER BY sr.institution_code, sr.catalog_number, sr.id
+            ORDER BY sr.institution_code, sr.collection_code, sr.catalog_number, sr.id
           `,
           [req.params.id]
         ),
@@ -614,6 +630,7 @@ router.get("/descriptions/:id", async (req, res, next) => {
         gbif_occurrence_key: serializeId(specimen.gbif_occurrence_key),
         publication_id: serializeId(specimen.publication_id),
         institution_code: specimen.institution_code,
+        collection_code: specimen.collection_code,
         catalog_number: specimen.catalog_number,
         specimen_label: specimen.specimen_label,
         notes: specimen.notes,

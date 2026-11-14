@@ -54,6 +54,7 @@ function AddCharacter({ workspace, members, source, onClose, onAdded }) {
       <Button disabled={busy} type={mode === "existing" ? "primary" : "default"} onClick={() => setMode("existing")}>Use existing character</Button>
       <Button disabled={busy} type={mode === "create" ? "primary" : "default"} onClick={() => setMode("create")}>Create new character</Button>
     </Space>}
+    {mode === "create" && error && <Alert type="error" message={error} />}
     {mode === "existing" ? <>
       <Input aria-label="Search global characters" placeholder="Search name, anatomical region, or description (at least 2 characters)" value={query} maxLength={200} onChange={(event) => setQuery(event.target.value)} />
       <Paragraph type="secondary">Global character library · first 30 matches. Refine your search as needed.</Paragraph>
@@ -64,7 +65,7 @@ function AddCharacter({ workspace, members, source, onClose, onAdded }) {
         { title: "Availability", render: (_, character) => <Tag>{memberIds.has(character.id) ? "Already in this workspace" : "Available global character"}</Tag> },
         { title: "Action", render: (_, character) => <Button disabled={busy || memberIds.has(character.id)} onClick={() => addExisting(character)}>Add existing character</Button> },
       ]} />
-    </> : <CreateCharacterForm workspace={workspace} source={source} onCreated={onAdded} onBusyChange={setBusy} />}
+    </> : <CreateCharacterForm workspace={workspace} source={source} onCreated={onAdded} onUseExisting={addExisting} onBusyChange={setBusy} />}
   </Modal>;
 }
 

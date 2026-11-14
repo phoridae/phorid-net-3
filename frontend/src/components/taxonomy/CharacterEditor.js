@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Alert, Button, Card, Checkbox, Form, Input, Modal, Popconfirm, Select, Space, Spin, Table, Typography } from "antd";
 import { addCharacterState, createCharacterWithStates, fetchCharacterUsage, fetchTaxonomyCharacter, removeCharacterState, updateTaxonomyCharacter } from "../../utils/api/taxonomy";
+import CharacterNameSuggestions from "./CharacterNameSuggestions";
 
 const { Paragraph, Title } = Typography;
 
-function DefinitionFields({ lockType = false, lockUnit = false }) {
+function DefinitionFields({ lockType = false, lockUnit = false, nameExtra }) {
   const form = Form.useFormInstance();
   const type = Form.useWatch("data_type", form) || "categorical";
   return <>
-    <Form.Item name="name" label="Name" rules={[{ required: true, whitespace: true }, { max: 255 }]}><Input maxLength={255} /></Form.Item>
+    <Form.Item name="name" label="Name" extra={nameExtra} rules={[{ required: true, whitespace: true }, { max: 255 }]}><Input maxLength={255} /></Form.Item>
     <Form.Item name="description" label="Description"><Input.TextArea rows={3} maxLength={16000} /></Form.Item>
     <Form.Item name="anatomical_region" label="Anatomical region"><Input maxLength={128} /></Form.Item>
     <Form.Item name="data_type" label="Data type"><Select disabled={lockType || undefined} options={[{ value: "categorical", label: "Categorical" }, { value: "numeric_range", label: "Numeric range" }]} /></Form.Item>
@@ -24,11 +25,17 @@ const definition = (values) => ({
   visibility: values.visibility,
 });
 
-export function CreateCharacterForm({ workspace, source, onCreated, onBusyChange = () => {} }) {
+export function CreateCharacterForm({ workspace, source, onCreated, onUseExisting, onBusyChange = () => {} }) {
   const [form] = Form.useForm();
   const type = Form.useWatch("data_type", form) || source?.data_type || "categorical";
+  const name = Form.useWatch("name", form) || "";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  async function reuse(character) {
+    setBusy(true); onBusyChange(true); setError("");
+    try { await onUseExisting(character); }
+    finally { setBusy(false); onBusyChange(false); }
+  }
   async function save(values) {
     setBusy(true); onBusyChange(true); setError("");
     try {
@@ -44,7 +51,7 @@ export function CreateCharacterForm({ workspace, source, onCreated, onBusyChange
     <Form form={form} layout="vertical" disabled={busy} onFinish={save} initialValues={{ name: source?.name || "", description: source?.description,
       anatomical_region: source?.anatomical_region, data_type: source?.data_type || "categorical", unit: source?.unit,
       visibility: source?.visibility || "private", states: source?.states?.map(({ name, description }) => ({ name, description })) || [] }}>
-      <DefinitionFields />
+      <DefinitionFields nameExtra={<CharacterNameSuggestions name={name} busy={busy} onUseExisting={reuse} />} />
       {type === "categorical" && <>
         <Title level={5}>State definitions</Title>
         <Paragraph>Order states with the arrow buttons. Use a new interpretation when scientific meanings differ.</Paragraph>

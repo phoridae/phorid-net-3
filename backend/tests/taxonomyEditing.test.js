@@ -36,6 +36,7 @@ const db = {
   },
 };
 require.cache[require.resolve("../dbTaxonomy")] = { exports: { query: (...args) => db.query(...args), getConnection: async () => { acquired++; return db; } } };
+require.cache[require.resolve("../dbGbif")] = { exports: { query: (...args) => db.query(...args) } };
 require.cache[require.resolve("../services/firebaseAdmin")] = { exports: {
   auth: () => ({ verifyIdToken: async (token) => ({ uid: "editor", admin: token === "admin" }) }),
 } };
@@ -80,6 +81,8 @@ test("every editing endpoint is admin-only before a connection is acquired", asy
     ["PUT", "/descriptions/1/observations/1/publication-evidence"],
     ["POST", "/descriptions/1/publications"], ["DELETE", "/descriptions/1/publications/1"],
     ["POST", "/workspaces/1/species/import"], ["POST", "/characters/with-states"],
+    ["POST", "/species/import"], ["POST", "/specimen-references/import"],
+    ["GET", "/specimen-references/search"], ["GET", "/specimen-references/duplicates"],
   ];
   const before = acquired;
   for (const [method, url] of routes) {
@@ -1084,4 +1087,288 @@ test("global character search, detail and usage are admin-only", async () => {
     assert.equal((await request("GET", url, undefined, null, readRouter)).status, 401);
     assert.equal((await request("GET", url, undefined, "member", readRouter)).status, 403);
   }
+});
+
+const gbifSpecimens = require("../services/gbifSpecimens");
+const cacheOccurrence = { gbifid: "4021395742", snapshot_date: "2026-01-01", species_key: "9608828", family: "Phoridae", genus: "Myriophora", specific_epithet: "wellsorum", species: "Myriophora wellsorum", scientific_name: "Myriophora wellsorum Brown", taxon_rank: "SPECIES", institution_code: "LACM", collection_code: "ENT", catalog_number: "12345", recorded_by: "Collector Person", locality: "California", country: "United States", basis_of_record: "PRESERVED_SPECIMEN", event_date: "2024-05-12" };
+const liveOccurrence = { key: 4021395742, speciesKey: 9608828, family: "Phoridae", genus: "Myriophora", specificEpithet: "wellsorum", species: "Myriophora wellsorum", scientificName: "Myriophora wellsorum Brown", taxonRank: "SPECIES", institutionCode: "LACM", collectionCode: "ENT", catalogNumber: "12345", recordedBy: "Collector Person", locality: "California", country: "United States", basisOfRecord: "PRESERVED_SPECIMEN", eventDate: "2024-05-12" };
+async function seedOccurrence(values = {}) {
+  const row = { ...cacheOccurrence, ...values };
+  await query(`INSERT INTO gbif_occurrence_phoridae (${Object.keys(row).join(",")}) VALUES (${Object.keys(row).map(() => "?").join(",")})`, Object.values(row));
+}
+function mockLive(t, rows = [liveOccurrence]) {
+  return t.mock.method(global, "fetch", async (url) => ({ ok: true, status: 200, json: async () =>
+    url.pathname === "/v1/species/search" ? { results: [{ rank: "FAMILY", canonicalName: "Phoridae", taxonomicStatus: "ACCEPTED", key: 9502 }] }
+      : url.pathname === "/v1/occurrence/search" ? { results: rows } : rows[0],
+  }));
+}
+const specimenLookup = (q, source = "cache", token = "admin") => request("GET", `/lookup/gbif/specimens?${new URLSearchParams({ q, source })}`, undefined, token, readRouter);
+
+test("global curated specimen search matches IDs, metadata and current published/WIP names", async () => {
+  const working = await createWorkingSpecies();
+  const specimen = await request("POST", "/specimen-references", { reference_type: "local", species_id: working.id, institution_code: "USNM", catalog_number: "12345", specimen_label: "Voucher alpha" });
+  for (const q of [specimen.body.id, "USNM 12345", "Voucher alpha", "Apocephalus AZ-17"]) {
+    const result = await request("GET", `/specimen-references/search?q=${encodeURIComponent(q)}`);
+    assert.equal(result.status, 200, result.error?.message);
+    assert.equal(result.body.length, 1);
+    assert.equal(result.body[0].id, specimen.body.id);
+    assert.equal(result.body[0].species.working_name, "AZ-17");
+    assert.equal(result.body[0].species.gbif_taxon_key, "1234567");
+    assert.equal(result.body[0].species.col_xr_taxon_key, null);
+    assert.equal(result.body[0].observation_count, 0);
+  }
+  await request("PATCH", `/specimen-references/${specimen.body.id}`, { species_id: "1" });
+  assert.equal((await request("GET", "/specimen-references/search?q=Testphora%20alpha")).body.length, 1);
+  await assertObservation(specimen.body.id);
+  assert.equal((await request("GET", `/specimen-references/${specimen.body.id}`)).body.observation_count, 1);
+  assert.equal((await request("GET", "/specimen-references/search?q=%25%25")).body.length, 0);
+});
+
+test("cache fuzzy specimen lookup matches combinations of real schema fields", async () => {
+  await seedOccurrence();
+  for (const q of ["Myriophora wellsorum", "LACM wellsorum", "LACM", "ENT", "12345", "LACM 12345", "Collector California"]) {
+    const result = await specimenLookup(q);
+    assert.equal(result.status, 200, result.error?.message);
+    assert.equal(result.body.query_type, "fuzzy");
+    assert.equal(result.body.results.length, 1, q);
+    assert.equal(result.body.results[0].gbif_occurrence_key, "4021395742");
+    assert.equal(result.body.results[0].collection_code, "ENT");
+    assert.equal(result.body.results[0].source, "cache");
+    assert.equal(result.body.results[0].col_xr_taxon_key, null);
+  }
+  assert.equal((await specimenLookup("%%")).body.results.length, 0);
+});
+
+test("cache ranking puts exact institutional matches before broad substrings and prefers vouchers", async () => {
+  await seedOccurrence({ gbifid: "3", institution_code: "PREFIX-LACM", basis_of_record: "HUMAN_OBSERVATION" });
+  await seedOccurrence({ gbifid: "2" });
+  await seedOccurrence({ gbifid: "1", basis_of_record: "HUMAN_OBSERVATION" });
+  await seedOccurrence({ gbifid: "4", catalog_number: null, basis_of_record: "HUMAN_OBSERVATION" });
+  const result = await specimenLookup("LACM");
+  assert.deepEqual(result.body.results.map((row) => row.gbif_occurrence_key), ["2", "1", "3"]);
+});
+
+test("numeric occurrence queries use exact cache IDs and exact live occurrence endpoint", async (t) => {
+  await seedOccurrence();
+  await seedOccurrence({ gbifid: "4021395743", catalog_number: "4021395742" });
+  const cached = await specimenLookup("4021395742");
+  assert.equal(cached.body.query_type, "occurrence_key");
+  assert.equal(cached.body.results.length, 1);
+  const fetch = mockLive(t);
+  const live = await specimenLookup("4021395742", "live_gbif");
+  assert.equal(live.status, 200);
+  assert.equal(live.body.query_type, "occurrence_key");
+  assert.equal(fetch.mock.calls.length, 1);
+  assert.equal(fetch.mock.calls[0].arguments[0].pathname, "/v1/occurrence/4021395742");
+  assert.equal(fetch.mock.calls[0].arguments[0].searchParams.get("checklistKey"), gbifTaxonomy.BACKBONE);
+});
+
+test("cache and live normalize consistently, preserving two independent species identifiers", async (t) => {
+  await seedOccurrence();
+  mockLive(t);
+  const cache = (await specimenLookup("LACM")).body.results[0];
+  const live = (await specimenLookup("LACM", "live_gbif")).body.results[0];
+  assert.deepEqual({ ...cache, source: "live_gbif" }, live);
+  const withCol = { ...liveOccurrence, classifications: {
+    [gbifTaxonomy.COL_XR]: { acceptedUsage: { key: "8CYC6", rank: "SPECIES", genericName: "Myriophora", specificEpithet: "wellsorum" } },
+    [gbifTaxonomy.BACKBONE]: { acceptedUsage: { key: "9608828", rank: "SPECIES" } },
+  } };
+  const normalized = gbifSpecimens.normalize(withCol, "live_gbif");
+  assert.equal(normalized.col_xr_taxon_key, "8CYC6");
+  assert.equal(normalized.gbif_taxon_key, "9608828");
+  const huge = gbifSpecimens.normalize({ ...cacheOccurrence, gbifid: "9007199254740993" }, "cache");
+  assert.equal(huge.gbif_occurrence_key, "9007199254740993");
+  assert.equal(gbifSpecimens.normalize({ ...liveOccurrence, key: Number.MAX_SAFE_INTEGER + 1 }, "live_gbif"), null);
+});
+
+test("lookup annotates existing specimens and resolves suggested species by COL, GBIF then unique exact name", async (t) => {
+  await seedOccurrence();
+  await query("UPDATE species SET genus='Myriophora', specific_epithet='wellsorum', gbif_taxon_key='9608828' WHERE id=1");
+  const existing = await request("POST", "/specimen-references", { species_id: "1", reference_type: "gbif", gbif_occurrence_key: "4021395742" });
+  const cache = (await specimenLookup("LACM")).body.results[0];
+  assert.equal(cache.existing_specimen_id, existing.body.id);
+  assert.equal(cache.species_suggestion.id, "1");
+  assert.equal(cache.species_match, "gbif_taxon_key");
+  const col = await request("POST", "/species", { genus: "Curatedname", specific_epithet: "alternative", col_xr_taxon_key: "8CYC6" });
+  mockLive(t, [{ ...liveOccurrence, classifications: { [gbifTaxonomy.COL_XR]: { usage: { key: "8CYC6", rank: "SPECIES" } } } }]);
+  const live = (await specimenLookup("4021395742", "live_gbif")).body.results[0];
+  assert.equal(live.existing_specimen_id, existing.body.id);
+  assert.equal(live.species_suggestion.id, col.body.id);
+  assert.equal(live.species_match, "col_xr_taxon_key");
+  await query("UPDATE species SET gbif_taxon_key=NULL WHERE id=1");
+  assert.equal((await specimenLookup("LACM")).body.results[0].species_match, "scientific_name");
+  await request("POST", "/species", { genus: "Myriophora", specific_epithet: "wellsorum" });
+  assert.equal((await specimenLookup("LACM")).body.results[0].species_suggestion, null);
+});
+
+test("specimen import is idempotent by occurrence key and never overwrites curated assignment on retry", async () => {
+  await seedOccurrence();
+  const values = { species_id: "1", gbif_occurrence_key: "4021395742", specimen_label: "Confirmed voucher" };
+  const first = await request("POST", "/specimen-references/import", values);
+  assert.equal(first.status, 200, first.error?.message);
+  assert.equal(first.body.created, true);
+  assert.equal(first.body.specimen.reference_type, "gbif");
+  assert.equal(first.body.specimen.species.id, "1");
+  assert.equal(first.body.specimen.institution_code, "LACM");
+  assert.equal(first.body.specimen.collection_code, "ENT");
+  assert.equal(first.body.specimen.specimen_label, "Confirmed voucher");
+  const working = await createWorkingSpecies();
+  await request("PATCH", `/specimen-references/${first.body.specimen.id}`, { species_id: working.id });
+  await query("DELETE FROM gbif_occurrence_phoridae");
+  const retry = await request("POST", "/specimen-references/import", values);
+  assert.equal(retry.status, 200);
+  assert.equal(retry.body.created, false);
+  assert.equal(retry.body.specimen.id, first.body.specimen.id);
+  assert.equal(retry.body.specimen.species.id, working.id);
+  assert.equal(retry.body.specimen.collection_code, "ENT");
+  assert.equal((await query("SELECT * FROM specimen_references")).length, 1);
+  assert.equal((await request("POST", "/specimen-references", { species_id: "1", reference_type: "gbif", gbif_occurrence_key: "4021395742" })).status, 409);
+});
+
+test("missing cached occurrence imports through exact live lookup with a confirmed WIP assignment", async (t) => {
+  const fetch = mockLive(t);
+  const working = await createWorkingSpecies();
+  const result = await request("POST", "/specimen-references/import", { species_id: working.id, gbif_occurrence_key: "4021395742" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.specimen.species.working_name, "AZ-17");
+  assert.equal(result.body.specimen.collection_code, "ENT");
+  assert.equal(result.body.specimen.specimen_label, null);
+  assert.equal(fetch.mock.calls[0].arguments[0].pathname, "/v1/occurrence/4021395742");
+  assert.equal((await query("SELECT * FROM workspace_species WHERE species_id = ?", [working.id])).length, 0);
+});
+
+test("manual duplicate discovery warns without imposing identity or uniqueness", async () => {
+  const values = { species_id: "1", reference_type: "local", institution_code: "USNM", catalog_number: "12345" };
+  const first = await request("POST", "/specimen-references", values);
+  const duplicates = await request("GET", "/specimen-references/duplicates?institution_code=usnm&catalog_number=12345");
+  assert.equal(duplicates.status, 200);
+  assert.equal(duplicates.body.length, 1);
+  assert.equal(duplicates.body[0].id, first.body.id);
+  assert.equal(duplicates.body[0].species.id, "1");
+  assert.equal((await request("POST", "/specimen-references", values)).status, 201);
+  assert.equal((await request("GET", "/specimen-references/duplicates")).status, 400);
+});
+
+test("global species import reuses existing resolution/duplicate logic without workspace membership", async (t) => {
+  t.mock.method(gbifTaxonomy, "resolveSpecies", async () => externalSpeciesFixture);
+  const first = await request("POST", "/species/import", { col_xr_taxon_key: "FQL6" });
+  const retry = await request("POST", "/species/import", { col_xr_taxon_key: "FQL6" });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.created, true);
+  assert.equal(retry.body.created, false);
+  assert.equal(first.body.species.id, retry.body.species.id);
+  assert.equal((await query("SELECT * FROM workspace_species WHERE species_id = ?", [first.body.species.id])).length, 0);
+});
+
+test("lookup failures are controlled and do not prevent cache search or manual creation", async (t) => {
+  await seedOccurrence();
+  t.mock.method(global, "fetch", async () => { throw new Error("Private upstream detail"); });
+  const failed = await specimenLookup("LACM", "live_gbif");
+  assert.equal(failed.status, 502);
+  assert.doesNotMatch(failed.body.error, /Private upstream detail/);
+  assert.equal((await specimenLookup("LACM")).body.results.length, 1);
+  assert.equal((await request("POST", "/specimen-references", { species_id: "1", reference_type: "local" })).status, 201);
+  const original = db.query;
+  t.mock.method(db, "query", async (sql, params) => {
+    if (sql.includes("FROM gbif_occurrence_phoridae")) throw new Error("Private database error");
+    return original(sql, params);
+  });
+  assert.equal((await specimenLookup("LACM")).status, 503);
+});
+
+test("specimen lookup and import validate bodies, missing species and admin authorization", async () => {
+  assert.equal((await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742" })).status, 400);
+  assert.equal((await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742", species_id: "999" })).status, 404);
+  assert.equal((await request("POST", "/specimen-references/import", { gbif_occurrence_key: "invalid", species_id: "1" })).status, 400);
+  assert.equal((await specimenLookup("")).status, 400);
+  assert.equal((await specimenLookup("LACM", "unknown")).status, 400);
+  assert.equal((await specimenLookup("LACM", "cache", null)).status, 401);
+  assert.equal((await specimenLookup("LACM", "cache", "member")).status, 403);
+});
+
+test("missing live occurrences yield an empty lookup and a controlled import 404", async (t) => {
+  t.mock.method(global, "fetch", async () => ({ ok: false, status: 404 }));
+  const response = await specimenLookup("4021395742", "live_gbif");
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.results, []);
+  const imported = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742", species_id: "1" });
+  assert.equal(imported.status, 404);
+  assert.equal((await query("SELECT * FROM specimen_references")).length, 0);
+});
+
+test("live fuzzy lookup selects the accepted exact family and filters broad upstream matches", async (t) => {
+  const fetch = t.mock.method(global, "fetch", async (url) => ({ ok: true, status: 200, json: async () => url.pathname === "/v1/species/search" ? {
+    results: [{ key: 12, rank: "FAMILY", canonicalName: "Phoridae", taxonomicStatus: "SYNONYM" }, { key: 9502, rank: "FAMILY", canonicalName: "Phoridae", taxonomicStatus: "ACCEPTED" }],
+  } : { results: [liveOccurrence, { ...liveOccurrence, key: 123, specificEpithet: "other", species: "Myriophora other" }] } }));
+  const response = await specimenLookup("LACM wellsorum", "live_gbif");
+  assert.equal(response.status, 200);
+  assert.equal(response.body.results.length, 1);
+  assert.equal(fetch.mock.calls[1].arguments[0].searchParams.get("familyKey"), "9502");
+  assert.equal(fetch.mock.calls[0].arguments[0].searchParams.get("datasetKey"), gbifTaxonomy.BACKBONE);
+});
+
+test("specimen collection code supports manual create, patch, null and omitted-field compatibility", async () => {
+  const fields = { species_id: "1", reference_type: "local", institution_code: "LACM", collection_code: "ENT", catalog_number: "12345", specimen_label: "Descriptive voucher label" };
+  const created = await request("POST", "/specimen-references", fields);
+  assert.equal(created.status, 201);
+  assert.equal(created.body.collection_code, "ENT");
+  assert.equal(created.body.specimen_label, "Descriptive voucher label");
+  const url = `/specimen-references/${created.body.id}`;
+  assert.equal((await request("GET", url)).body.collection_code, "ENT");
+  assert.equal((await request("PATCH", url, { collection_code: "DIP" })).body.collection_code, "DIP");
+  assert.equal((await request("PATCH", url, { notes: "Other metadata only" })).body.collection_code, "DIP");
+  assert.equal((await request("PATCH", url, { collection_code: null })).body.collection_code, null);
+  for (const value of [42, false, {}, "E".repeat(65)]) {
+    assert.equal((await request("POST", "/specimen-references", { ...fields, collection_code: value })).status, 400);
+    assert.equal((await request("PATCH", url, { collection_code: value })).status, 400);
+  }
+  for (const extra of [{}, { collection_code: null }, { collection_code: "ENT", institution_code: null, catalog_number: null }]) {
+    const result = await request("POST", "/specimen-references", { species_id: "1", reference_type: "local", ...extra });
+    assert.equal(result.status, 201);
+    assert.equal(result.body.collection_code, extra.collection_code || null);
+  }
+});
+
+test("curated collection search matches single and combined institution/collection/catalog terms", async () => {
+  const created = await request("POST", "/specimen-references", { species_id: "1", reference_type: "local", institution_code: "LACM", collection_code: "ENT", catalog_number: "12345" });
+  for (const q of ["ENT", "LACM ENT", "LACM ENT 12345"]) {
+    const response = await request("GET", `/specimen-references/search?q=${encodeURIComponent(q)}`);
+    assert.equal(response.status, 200);
+    assert.equal(response.body.length, 1);
+    assert.equal(response.body[0].id, created.body.id);
+    assert.equal(response.body[0].collection_code, "ENT");
+  }
+});
+
+test("duplicate discovery requires every supplied normalized identity component and keeps collection-less fallback", async () => {
+  const create = async (institution_code, collection_code) => (await request("POST", "/specimen-references", {
+    species_id: "1", reference_type: "local", institution_code, collection_code, catalog_number: " 12345 ",
+  })).body;
+  const ent = await create(" LACM ", " ENT ");
+  const other = await create("LACM", "DIP");
+  const legacy = await create("LACM", null);
+  await create("USNM", "ENT");
+  const exact = await request("GET", "/specimen-references/duplicates?institution_code=%20lacm%20&collection_code=%20ent%20&catalog_number=%2012345%20");
+  assert.deepEqual(exact.body.map((row) => row.id), [ent.id]);
+  assert.equal(exact.body[0].collection_code, " ENT ");
+  for (const suffix of ["", "&collection_code="]) {
+    const fallback = await request("GET", `/specimen-references/duplicates?institution_code=LACM&catalog_number=12345${suffix}`);
+    assert.deepEqual(fallback.body.map((row) => row.id), [ent.id, other.id, legacy.id]);
+    assert.equal(fallback.body.find((row) => row.id === legacy.id).collection_code, null);
+  }
+  assert.equal((await request("GET", "/specimen-references/duplicates?institution_code=LACM&collection_code=OTHER&catalog_number=12345")).body.length, 0);
+});
+
+test("description and raw specimen provenance retain collection code and free-text label independently", async () => {
+  const specimenId = await createSpecimen();
+  await request("PATCH", `/specimen-references/${specimenId}`, { collection_code: "ENT", specimen_label: "Independently descriptive label" });
+  await linkSpecimen(specimenId);
+  const assertion = await assertObservation(specimenId);
+  assert.equal(assertion.specimen_reference.collection_code, "ENT");
+  await put(1, { state_ids: [1] });
+  await specimenEvidence([assertion.id]);
+  const description = await detail();
+  assert.equal(description.body.specimen_references[0].collection_code, "ENT");
+  assert.equal(description.body.specimen_references[0].specimen_label, "Independently descriptive label");
+  assert.equal(description.body.character_observations[0].specimen_evidence[0].specimen_reference.collection_code, "ENT");
 });

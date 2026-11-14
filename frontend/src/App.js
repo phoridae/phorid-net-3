@@ -21,6 +21,7 @@ import TaxonomyWorkbench from "./pages/TaxonomyWorkbench";
 import TaxonomySection from "./components/taxonomy/TaxonomySection";
 import SpeciesManager from "./components/taxonomy/SpeciesManager";
 import CharacterManager from "./components/taxonomy/CharacterManager";
+import SpecimenManager from "./components/taxonomy/SpecimenManager";
 import GbifCache from './pages/GbifCache';
 import Crisis from './pages/Crisis';
 import About from './pages/About';
@@ -61,7 +62,7 @@ export default function App() {
           >
             <Route index element={<Navigate to="species" replace />} />
             <Route path="species" element={<SpeciesManager />} />
-            <Route path="specimens" element={<TaxonomySection sectionKey="specimens" />} />
+            <Route path="specimens" element={<SpecimenManager />} />
             <Route path="characters" element={<CharacterManager />} />
             <Route path="data-entry" element={<TaxonomySection sectionKey="data-entry" />} />
             <Route path="descriptions" element={<TaxonomySection sectionKey="descriptions" />} />

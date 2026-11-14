@@ -5,11 +5,12 @@ import TaxonomyWorkbench from "./TaxonomyWorkbench";
 import TaxonomySection, { taxonomySections } from "../components/taxonomy/TaxonomySection";
 import SpeciesManager from "../components/taxonomy/SpeciesManager";
 import CharacterManager from "../components/taxonomy/CharacterManager";
+import SpecimenManager from "../components/taxonomy/SpecimenManager";
 import { useAuth } from "../auth/AuthContext";
-import { fetchTaxonomyWorkspaces, fetchWorkspaceCharacters, fetchWorkspaceSpecies } from "../utils/api/taxonomy";
+import { fetchTaxonomyWorkspaces, fetchWorkspaceCharacters, fetchWorkspaceSpecies, searchTaxonomySpecimens } from "../utils/api/taxonomy";
 
 jest.mock("../auth/AuthContext", () => ({ useAuth: jest.fn() }));
-jest.mock("../utils/api/taxonomy", () => ({ fetchTaxonomyWorkspaces: jest.fn(), fetchWorkspaceSpecies: jest.fn(), fetchWorkspaceCharacters: jest.fn() }));
+jest.mock("../utils/api/taxonomy", () => ({ fetchTaxonomyWorkspaces: jest.fn(), fetchWorkspaceSpecies: jest.fn(), fetchWorkspaceCharacters: jest.fn(), searchTaxonomySpecimens: jest.fn() }));
 
 const workspaces = [
   { id: "9007199254740993", name: "Canada revision", description: "Canadian research", visibility: "private", owner_uid: "another-researcher" },
@@ -34,7 +35,7 @@ function TestRouter({ children }) {
       <Routes>
         <Route path="/admin/taxonomy" element={children}>
           <Route index element={<Navigate to="species" replace />} />
-          {taxonomySections.map(({ key }) => <Route key={key} path={key} element={key === "species" ? <SpeciesManager /> : key === "characters" ? <CharacterManager /> : <TaxonomySection sectionKey={key} />} />)}
+          {taxonomySections.map(({ key }) => <Route key={key} path={key} element={key === "species" ? <SpeciesManager /> : key === "characters" ? <CharacterManager /> : key === "specimens" ? <SpecimenManager /> : <TaxonomySection sectionKey={key} />} />)}
           <Route path="*" element={<Navigate to="/admin/taxonomy/species" replace />} />
         </Route>
       </Routes>
@@ -55,6 +56,7 @@ beforeEach(() => {
   fetchWorkspaceSpecies.mockReset();
   fetchWorkspaceSpecies.mockResolvedValue([]);
   fetchWorkspaceCharacters.mockResolvedValue([]);
+  searchTaxonomySpecimens.mockResolvedValue([]);
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -125,7 +127,7 @@ test("selection works when session storage is blocked", async () => {
   jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("Blocked"); });
   render(<TaxonomyWorkbench />);
   await chooseWorkspace("USA revision");
-  expect(screen.getByLabelText("Current workspace")).toHaveTextContent("USA revision");
+  expect(await screen.findByLabelText("Current workspace")).toHaveTextContent("USA revision");
 });
 
 test("aborts requests on unmount", async () => {
@@ -136,11 +138,12 @@ test("aborts requests on unmount", async () => {
   expect(signal.aborted).toBe(true);
 });
 
-test("the base route defaults to Species and workflow navigation waits for workspace selection", async () => {
+test("the base route defaults to Species; global Specimens remains available before workspace selection", async () => {
   render(<TaxonomyWorkbench />);
   expect(await screen.findByText("Select a workspace to begin working with taxonomy data.")).toBeInTheDocument();
   expect(screen.getByLabelText("Current path")).toHaveTextContent("/admin/taxonomy/species");
-  expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Species" })).toHaveAttribute("aria-disabled", "true");
+  expect(screen.getByRole("tab", { name: "Specimens" })).not.toHaveAttribute("aria-disabled", "true");
   expect(screen.queryByRole("heading", { name: "Species" })).not.toBeInTheDocument();
   await chooseWorkspace("Canada revision");
   expect(screen.getByRole("tab", { name: "Species" })).toHaveAttribute("aria-selected", "true");
@@ -171,8 +174,8 @@ test("a direct section link restores the workspace and permits changing it witho
   sessionStorage.setItem("taxonomy-workspace:editor", "2");
   render(<TaxonomyWorkbench />);
   expect(await screen.findByRole("heading", { name: "Specimens" })).toBeInTheDocument();
-  expect(screen.getByText(/Specimens do not belong to a workspace/)).toBeInTheDocument();
-  expect(screen.getByLabelText("Current workspace")).toHaveTextContent("USA revision");
+  expect(screen.getByText("Specimens are global records and are not owned by a workspace.")).toBeInTheDocument();
+  expect(await screen.findByLabelText("Current workspace")).toHaveTextContent("USA revision");
   await chooseWorkspace("Canada revision");
   expect(screen.getByLabelText("Current path")).toHaveTextContent("/admin/taxonomy/specimens");
   expect(screen.getByLabelText("Current workspace")).toHaveTextContent("Canada revision");
@@ -187,4 +190,20 @@ test("Data Entry presents both specimen scoring and literature digitization as p
   expect(screen.getByText("Score individual specimens.")).toBeInTheDocument();
   expect(screen.getByText("Digitize structured species-description data from literature.")).toBeInTheDocument();
   expect(screen.getByText("Tools for this section will be added next.")).toBeInTheDocument();
+});
+
+test("global specimen search works without a workspace and persists unchanged across workspace changes", async () => {
+  initialPath = "/admin/taxonomy/specimens";
+  searchTaxonomySpecimens.mockResolvedValue([{ id: "17", specimen_label: "Global voucher", species: null, reference_type: "local" }]);
+  render(<TaxonomyWorkbench />);
+  await screen.findByText("Global voucher");
+  expect(screen.queryByLabelText("Current workspace")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Search curated specimens"), { target: { value: "USNM" } });
+  await waitFor(() => expect(searchTaxonomySpecimens).toHaveBeenCalledTimes(2));
+  await chooseWorkspace("Canada revision");
+  await chooseWorkspace("USA revision");
+  expect(screen.getByLabelText("Current workspace")).toHaveTextContent("USA revision");
+  expect(screen.getByLabelText("Search curated specimens")).toHaveValue("USNM");
+  expect(screen.getByText("Global voucher")).toBeInTheDocument();
+  expect(searchTaxonomySpecimens).toHaveBeenCalledTimes(2);
 });
