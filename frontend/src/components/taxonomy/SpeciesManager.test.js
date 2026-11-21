@@ -1,4 +1,5 @@
-import React from "react";
+import React, { act } from "react";
+import userEvent from "@testing-library/user-event";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useOutletContext } from "react-router-dom";
 import SpeciesManager, { groupSpeciesSearchResults } from "./SpeciesManager";
@@ -181,4 +182,136 @@ test("workspace load and external search failures remain visible with recovery c
   lookupTaxonomyTaxa.mockRejectedValue(new Error("COL service unavailable"));
   fireEvent.change(screen.getByLabelText("Find species"), { target: { value: "Apo" } });
   expect(await screen.findByText("COL service unavailable")).toBeInTheDocument();
+});
+
+
+const typeText = (input, text) => act(() => userEvent.type(input, text));
+const clickControl = (control) => act(() => userEvent.click(control));
+const clearText = (input) => act(() => userEvent.clear(input));
+
+async function manualForm({ manualGenus = true } = {}) {
+  await openAdd();
+  fireEvent.click(screen.getByRole("button", { name: "Create working taxon manually" }));
+  if (manualGenus) clickControl(screen.getByRole("checkbox", { name: "Enter genus manually" }));
+}
+async function standardizedGenus() {
+  lookupTaxonomyTaxa.mockResolvedValue([{ genus: "Dohrniphora", taxonomic_status: "ACCEPTED" }]);
+  const genus = screen.getByLabelText("Genus");
+  fireEvent.mouseDown(genus);
+  typeText(genus, "Dohr");
+  fireEvent.click(await screen.findByText("Dohrniphora", { selector: ".ant-select-item-option-content" }));
+}
+async function publishedStatus() {
+  fireEvent.mouseDown(screen.getByLabelText("Species status"));
+  fireEvent.click(await screen.findByText("Published", { selector: ".ant-select-item-option-content" }));
+}
+
+test.each(["Newgenus", "TESTIPHORIA", "PhoridaeGenusA"])("manual genus permits arbitrary keyboard input: %s", async (name) => {
+  await manualForm();
+  const genus = screen.getByRole("textbox", { name: "Genus" });
+  const epithet = screen.getByRole("textbox", { name: "Specific epithet" });
+  expect(genus).toBeEnabled(); expect(epithet).toBeEnabled();
+  typeText(genus, name);
+  typeText(epithet, "examplei");
+  expect(genus).toHaveValue(name); expect(epithet).toHaveValue("examplei");
+  expect(lookupTaxonomyTaxa).not.toHaveBeenCalled();
+});
+
+test("published manually entered genus and epithet can be created", async () => {
+  await manualForm();
+  typeText(screen.getByLabelText("Genus"), "Newgenus");
+  typeText(screen.getByLabelText("Specific epithet"), "examplei");
+  await publishedStatus();
+  fireEvent.click(screen.getByRole("button", { name: "Check and add species" }));
+  await waitFor(() => expect(createTaxonomySpecies).toHaveBeenCalledWith(expect.objectContaining({ genus: "Newgenus", specific_epithet: "examplei", species_status: "published" })));
+});
+
+test("standardized genus requires lookup selection while epithet is editable before and after selection", async () => {
+  await manualForm({ manualGenus: false });
+  const epithet = screen.getByLabelText("Specific epithet");
+  typeText(epithet, "testensis");
+  const genus = screen.getByRole("combobox", { name: "Genus" });
+  typeText(genus, "Unconfirmedgenus");
+  fireEvent.click(screen.getByRole("button", { name: "Check and add species" }));
+  await screen.findByText("Choose or enter a genus.");
+  expect(createTaxonomySpecies).not.toHaveBeenCalled();
+  clearText(genus);
+  await standardizedGenus();
+  expect(epithet).toBeEnabled();
+  clearText(epithet); typeText(epithet, "examplei");
+  fireEvent.click(screen.getByRole("button", { name: "Check and add species" }));
+  await waitFor(() => expect(createTaxonomySpecies).toHaveBeenCalledWith(expect.objectContaining({ genus: "Dohrniphora", specific_epithet: "examplei", species_status: "work_in_progress" })));
+  expect(lookupTaxonomyTaxa).toHaveBeenCalledWith("Dohr", "GENUS", { signal: expect.any(AbortSignal) });
+});
+
+test("WIP with no epithet requires a nonblank working name", async () => {
+  await manualForm();
+  typeText(screen.getByLabelText("Genus"), "Dohrniphora");
+  typeText(screen.getByLabelText("Working / code name"), "   ");
+  fireEvent.click(screen.getByRole("button", { name: "Check and add species" }));
+  await screen.findByText("Enter a meaningful working name for an undescribed taxon.");
+  expect(createTaxonomySpecies).not.toHaveBeenCalled();
+  typeText(screen.getByLabelText("Working / code name"), "JH-04");
+  fireEvent.click(screen.getByRole("button", { name: "Check and add species" }));
+  await waitFor(() => expect(createTaxonomySpecies).toHaveBeenCalledWith(expect.objectContaining({ genus: "Dohrniphora", specific_epithet: null, working_name: "JH-04" })));
+});
+
+test("WIP with epithet and working name can be created", async () => {
+  await manualForm();
+  typeText(screen.getByLabelText("Genus"), "Dohrniphora");
+  typeText(screen.getByLabelText("Specific epithet"), "testensis");
+  typeText(screen.getByLabelText("Working / code name"), "JH-04");
+  fireEvent.click(screen.getByRole("button", { name: "Check and add species" }));
+  await waitFor(() => expect(createTaxonomySpecies).toHaveBeenCalledWith(expect.objectContaining({ genus: "Dohrniphora", specific_epithet: "testensis", working_name: "JH-04", species_status: "work_in_progress" })));
+});
+
+test("switching genus modes clears the genus choice and preserves editable epithet", async () => {
+  await manualForm();
+  typeText(screen.getByLabelText("Genus"), "Newgenus");
+  typeText(screen.getByLabelText("Specific epithet"), "examplei");
+  const toggle = screen.getByRole("checkbox", { name: "Enter genus manually" });
+  clickControl(toggle);
+  expect(screen.getByRole("combobox", { name: "Genus" })).toBeEnabled();
+  await standardizedGenus();
+  clickControl(toggle);
+  const manualInput = screen.getByRole("textbox", { name: "Genus" });
+  expect(manualInput).toBeEnabled(); expect(manualInput).toHaveValue("");
+  typeText(manualInput, "PhoridaeGenusA");
+  typeText(screen.getByLabelText("Specific epithet"), "new");
+  expect(manualInput).toHaveValue("PhoridaeGenusA");
+  expect(screen.getByLabelText("Specific epithet")).toHaveValue("exampleinew");
+});
+
+
+test("a saved species with failed membership is separate from a fresh editable draft", async () => {
+  addWorkspaceSpecies.mockRejectedValueOnce(new Error("Membership unavailable"));
+  await manual();
+  fireEvent.click(screen.getByRole("button", { name: "Check and add species" }));
+  await screen.findByText("The global species record has been created.");
+  expect(screen.queryByRole("textbox", { name: "Genus" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Start a new species" }));
+  const genus = screen.getByRole("textbox", { name: "Genus" });
+  const epithet = screen.getByRole("textbox", { name: "Specific epithet" });
+  expect(genus).toBeEnabled(); expect(epithet).toBeEnabled();
+  typeText(genus, "Newgenus"); typeText(epithet, "examplei");
+  expect(genus).toHaveValue("Newgenus"); expect(epithet).toHaveValue("examplei");
+  expect(screen.getByLabelText("Working / code name")).toHaveValue("");
+  expect(createTaxonomySpecies).toHaveBeenCalledTimes(1);
+});
+
+test("switching workspace opens an independent editable species draft", async () => {
+  const view = render(<SpeciesManager />);
+  await screen.findByText("Phoragenus alpha");
+  fireEvent.click(screen.getByRole("button", { name: "Add species" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create working taxon manually" }));
+  useOutletContext.mockReturnValue({ currentWorkspace: { id: "5", name: "New workspace" } });
+  view.rerender(<SpeciesManager />);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Add species" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Add species" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create working taxon manually" }));
+  clickControl(screen.getByRole("checkbox", { name: "Enter genus manually" }));
+  typeText(screen.getByLabelText("Genus"), "TESTIPHORIA");
+  typeText(screen.getByLabelText("Specific epithet"), "testensis");
+  expect(screen.getByLabelText("Genus")).toHaveValue("TESTIPHORIA");
+  expect(screen.getByLabelText("Specific epithet")).toHaveValue("testensis");
 });

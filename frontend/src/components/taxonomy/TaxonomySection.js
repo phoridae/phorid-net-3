@@ -12,8 +12,8 @@ export const taxonomySections = [
   },
   {
     key: "specimens", label: "Specimens",
-    description: "Explore global specimen records. Specimens do not belong to a workspace.",
-    workflows: ["Search global specimens and look up GBIF occurrences.", "Create local specimen records.", "Review specimen metadata and update current species assignments."],
+    description: "Global vouchers currently interpreted in the selected workspace.",
+    workflows: ["Search specimens interpreted here; add or reuse global vouchers.", "Create local specimen records.", "Review voucher metadata and workspace identifications."],
   },
   {
     key: "characters", label: "Characters",

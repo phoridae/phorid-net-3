@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Oct 25, 2026 at 07:43 AM
+-- Generation Time: Nov 20, 2026 at 03:02 PM
 -- Server version: 10.5.25-MariaDB-cll-lve
 -- PHP Version: 8.1.34
 
@@ -53,7 +53,14 @@ INSERT INTO `characters` (`id`, `name`, `description`, `anatomical_region`, `dat
 (12, 'POSTMAN EVIDENCE 1792713855081 Anepisternal setae', 'Disposable categorical evidence character', 'Thorax', 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-10-23 00:04:15', '2026-10-23 00:04:15'),
 (13, 'POSTMAN EVIDENCE 1792713855081 Body length', 'Disposable numeric evidence character', 'General', 'numeric_range', 'mm', 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-10-23 00:04:16', '2026-10-23 00:04:16'),
 (22, 'TEST Anepisternal setae Hash', 'Temporary categorical character for testing. Disagreed with the other interpretation and added a new state', 'Thorax', 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-10-24 00:19:42', '2026-10-24 00:20:20'),
-(23, 'TEST BRAND NEW', 'This is anew one', NULL, 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-10-24 00:21:35', '2026-10-24 00:21:35');
+(23, 'TEST BRAND NEW', 'This is anew one', NULL, 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-10-24 00:21:35', '2026-10-24 00:21:35'),
+(24, 'TEST Wing membrane color', NULL, NULL, 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-11-13 23:36:04', '2026-11-13 23:36:04'),
+(25, 'TEST Wing length', NULL, NULL, 'numeric_range', 'mm', 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-11-13 23:44:27', '2026-11-13 23:44:27'),
+(26, 'TEST Wing membrane color', NULL, NULL, 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-11-14 00:16:19', '2026-11-14 00:16:19'),
+(27, 'TEST Wing membrane color', NULL, NULL, 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-11-14 00:17:14', '2026-11-14 00:17:14'),
+(28, 'TEST Wing membrane color', NULL, NULL, 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-11-14 00:17:37', '2026-11-14 00:17:37'),
+(29, 'unused TEST character', 'Unused test char for testing this char', 'Head', 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-11-14 00:21:22', '2026-11-14 00:21:22'),
+(30, 'TEST Wing membrane color interpretation 2', 'Hash\'s new interpretation of TEST Wing membrane', NULL, 'categorical', NULL, 'FQuQCTnfiwYVRnhTai66vqnA9L73', 'private', '2026-11-14 00:24:48', '2026-11-14 00:24:48');
 
 -- --------------------------------------------------------
 
@@ -171,7 +178,15 @@ INSERT INTO `character_states` (`id`, `character_id`, `name`, `description`, `di
 (20, 12, 'small setulae', 'POSTMAN evidence state B', 20, '2026-10-23 00:04:16', '2026-10-23 00:04:16'),
 (29, 22, 'bare', NULL, 0, '2026-10-24 00:19:42', '2026-10-24 00:19:42'),
 (30, 22, 'small setulae', NULL, 1, '2026-10-24 00:19:42', '2026-10-24 00:19:42'),
-(31, 22, 'microsetulae', NULL, 2, '2026-10-24 00:19:43', '2026-10-24 00:19:43');
+(31, 22, 'microsetulae', NULL, 2, '2026-10-24 00:19:43', '2026-10-24 00:19:43'),
+(32, 24, 'clear', NULL, 0, '2026-11-13 23:36:04', '2026-11-13 23:36:04'),
+(33, 24, 'smokey', NULL, 1, '2026-11-13 23:36:04', '2026-11-13 23:36:04'),
+(34, 24, 'dark', NULL, 2, '2026-11-13 23:36:05', '2026-11-13 23:36:05'),
+(35, 29, 'a state', 'a state description', 0, '2026-11-14 00:21:22', '2026-11-14 00:21:22'),
+(36, 29, 'b state', 'b state description', 1, '2026-11-14 00:22:58', '2026-11-14 00:22:58'),
+(37, 30, 'clearish', NULL, 0, '2026-11-14 00:24:48', '2026-11-14 00:24:48'),
+(38, 30, 'smokey', NULL, 1, '2026-11-14 00:24:49', '2026-11-14 00:24:49'),
+(39, 30, 'dark', NULL, 2, '2026-11-14 00:24:49', '2026-11-14 00:24:49');
 
 -- --------------------------------------------------------
 
@@ -399,7 +414,11 @@ INSERT INTO `species` (`id`, `gbif_taxon_key`, `col_xr_taxon_key`, `genus`, `spe
 (19, 9608828, '8CYC6', 'Myriophora', 'wellsorum', 'published', NULL, NULL, '2026-10-23 23:14:59', '2026-10-23 23:14:59'),
 (20, NULL, NULL, 'Apodicrania', 'HASH-22', 'work_in_progress', 'HASH-22', 'Some notes', '2026-10-23 23:42:14', '2026-10-23 23:42:14'),
 (21, NULL, NULL, 'TESTIPHORIE', 'HASHTEST00', 'work_in_progress', 'THTESTONE', 'Some notes', '2026-10-23 23:44:39', '2026-10-23 23:44:39'),
-(22, 1548970, '373XP', 'Dohrniphora', 'andersoni', 'published', NULL, NULL, '2026-10-23 23:45:55', '2026-10-23 23:45:55');
+(22, 1548970, '373XP', 'Dohrniphora', 'andersoni', 'published', NULL, NULL, '2026-10-23 23:45:55', '2026-10-23 23:45:55'),
+(23, 9352132, '8CYB5', 'Myriophora', 'kungae', 'published', NULL, NULL, '2026-11-14 01:37:20', '2026-11-14 01:37:20'),
+(24, 9333630, '8CY93', 'Myriophora', 'alexandrae', 'published', NULL, NULL, '2026-11-14 22:42:54', '2026-11-14 22:42:54'),
+(25, 5072472, '73FCT', 'Metopina', 'subarcuata', 'published', NULL, NULL, '2026-11-20 21:39:45', '2026-11-20 21:39:45'),
+(26, 5072515, '5D558', 'Zikania', 'schmidti', 'published', NULL, NULL, '2026-11-20 21:43:19', '2026-11-20 21:43:19');
 
 -- --------------------------------------------------------
 
@@ -518,7 +537,12 @@ CREATE TABLE `specimen_references` (
 INSERT INTO `specimen_references` (`id`, `species_id`, `reference_type`, `gbif_occurrence_key`, `publication_id`, `institution_code`, `collection_code`, `catalog_number`, `specimen_label`, `notes`, `created_at`, `updated_at`) VALUES
 (1, NULL, 'local', NULL, NULL, 'TEST', NULL, '001', 'Temporary test specimen', 'Temporary record for testing description/specimen relationships.', '2026-10-05 22:23:11', '2026-10-05 22:23:11'),
 (2, NULL, 'local', NULL, NULL, 'POSTMAN', NULL, '1792713855081-001', 'POSTMAN EVIDENCE 1792713855081 specimen 1', 'Disposable specimen; PATCH verified by Postman.', '2026-10-23 00:04:18', '2026-10-23 00:04:18'),
-(3, NULL, 'local', NULL, NULL, 'POSTMAN', NULL, '1792713855081-002', 'POSTMAN EVIDENCE 1792713855081 unlinked specimen', 'Used to prove evidence must come from a specimen associated with the description.', '2026-10-23 00:04:19', '2026-10-23 00:04:19');
+(3, NULL, 'local', NULL, NULL, 'POSTMAN', NULL, '1792713855081-002', 'POSTMAN EVIDENCE 1792713855081 unlinked specimen', 'Used to prove evidence must come from a specimen associated with the description.', '2026-10-23 00:04:19', '2026-10-23 00:04:19'),
+(10, 2, 'local', NULL, NULL, 'LACM', 'ENT', '12345', NULL, NULL, '2026-11-14 01:17:41', '2026-11-14 01:17:41'),
+(11, 21, 'local', NULL, NULL, 'LACME', 'ENT', '1234567', NULL, NULL, '2026-11-14 01:18:46', '2026-11-14 01:18:46'),
+(12, 23, 'gbif', 3417795479, NULL, 'LACM', 'ENT', '093601', NULL, NULL, '2026-11-14 01:37:25', '2026-11-14 01:37:25'),
+(13, 2, 'gbif', 3417818205, NULL, 'LACM', 'ENT', '307253', NULL, NULL, '2026-11-14 22:43:12', '2026-11-20 21:44:37'),
+(14, 25, 'gbif', 4913041489, NULL, 'McGill University, Lyman Entomological Museum', NULL, 'LEM-0001202', NULL, NULL, '2026-11-20 21:40:54', '2026-11-20 21:40:54');
 
 -- --------------------------------------------------------
 
@@ -570,9 +594,14 @@ INSERT INTO `workspace_characters` (`workspace_id`, `character_id`, `display_ord
 (2, 3, 30, '2026-10-05 23:52:55'),
 (2, 4, 20, '2026-10-05 23:52:55'),
 (2, 5, 10, '2026-10-05 23:52:55'),
+(2, 24, 0, '2026-11-13 23:47:05'),
+(2, 29, 0, '2026-11-14 00:21:22'),
+(2, 30, 0, '2026-11-14 00:24:49'),
 (3, 3, 20, '2026-10-05 23:52:55'),
 (3, 4, 30, '2026-10-05 23:52:55'),
 (3, 5, 10, '2026-10-05 23:52:55'),
+(3, 12, 0, '2026-11-14 00:57:48'),
+(3, 25, 0, '2026-11-13 23:44:27'),
 (8, 3, 0, '2026-10-24 00:18:37'),
 (8, 12, 10, '2026-10-23 00:04:16'),
 (8, 13, 20, '2026-10-23 00:04:16'),
@@ -605,9 +634,28 @@ INSERT INTO `workspace_species` (`workspace_id`, `species_id`, `display_order`, 
 (3, 5, 10, '2026-10-05 23:52:55'),
 (3, 20, 0, '2026-10-23 23:42:15'),
 (3, 21, 0, '2026-10-23 23:45:06'),
+(3, 24, 0, '2026-11-14 22:43:12'),
+(3, 25, 0, '2026-11-20 21:39:45'),
+(3, 26, 0, '2026-11-20 21:43:19'),
 (8, 9, 10, '2026-10-23 00:04:15'),
 (8, 10, 20, '2026-10-23 00:04:15'),
 (8, 21, 0, '2026-10-23 23:44:39');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `workspace_specimen_identifications`
+--
+
+CREATE TABLE `workspace_specimen_identifications` (
+  `workspace_id` bigint(20) UNSIGNED NOT NULL,
+  `specimen_reference_id` bigint(20) UNSIGNED NOT NULL,
+  `species_id` bigint(20) UNSIGNED NOT NULL,
+  `identified_by_uid` varchar(128) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Indexes for dumped tables
@@ -796,6 +844,14 @@ ALTER TABLE `workspace_species`
   ADD KEY `idx_workspace_species_species` (`species_id`);
 
 --
+-- Indexes for table `workspace_specimen_identifications`
+--
+ALTER TABLE `workspace_specimen_identifications`
+  ADD PRIMARY KEY (`workspace_id`,`specimen_reference_id`),
+  ADD KEY `idx_workspace_specimen_identifications_specimen` (`specimen_reference_id`),
+  ADD KEY `idx_workspace_specimen_identifications_species` (`species_id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -803,7 +859,7 @@ ALTER TABLE `workspace_species`
 -- AUTO_INCREMENT for table `characters`
 --
 ALTER TABLE `characters`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `character_observations`
@@ -815,7 +871,7 @@ ALTER TABLE `character_observations`
 -- AUTO_INCREMENT for table `character_states`
 --
 ALTER TABLE `character_states`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT for table `identification_keys`
@@ -833,7 +889,7 @@ ALTER TABLE `publications`
 -- AUTO_INCREMENT for table `species`
 --
 ALTER TABLE `species`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT for table `species_descriptions`
@@ -851,7 +907,7 @@ ALTER TABLE `specimen_observations`
 -- AUTO_INCREMENT for table `specimen_references`
 --
 ALTER TABLE `specimen_references`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `workspaces`
@@ -981,6 +1037,14 @@ ALTER TABLE `workspace_characters`
 ALTER TABLE `workspace_species`
   ADD CONSTRAINT `fk_workspace_species_species` FOREIGN KEY (`species_id`) REFERENCES `species` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_workspace_species_workspace` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `workspace_specimen_identifications`
+--
+ALTER TABLE `workspace_specimen_identifications`
+  ADD CONSTRAINT `fk_workspace_specimen_identifications_species` FOREIGN KEY (`species_id`) REFERENCES `species` (`id`),
+  ADD CONSTRAINT `fk_workspace_specimen_identifications_specimen` FOREIGN KEY (`specimen_reference_id`) REFERENCES `specimen_references` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_workspace_specimen_identifications_workspace` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

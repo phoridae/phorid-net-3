@@ -81,6 +81,7 @@ test("every editing endpoint is admin-only before a connection is acquired", asy
     ["PUT", "/descriptions/1/observations/1/publication-evidence"],
     ["POST", "/descriptions/1/publications"], ["DELETE", "/descriptions/1/publications/1"],
     ["POST", "/workspaces/1/species/import"], ["POST", "/characters/with-states"],
+    ["GET", "/workspaces/1/specimens"], ["GET", "/workspaces/1/specimens/1/identification"], ["PUT", "/workspaces/1/specimens/1/identification"], ["GET", "/specimen-references/1/external-taxonomy"],
     ["POST", "/species/import"], ["POST", "/specimen-references/import"],
     ["GET", "/specimen-references/search"], ["GET", "/specimen-references/duplicates"],
   ];
@@ -378,7 +379,7 @@ test("reject invalid bodies, enums, IDs, excessive text, unknown fields and SQL 
 
 const detail = (id = 1) => request("GET", `/descriptions/${id}`, undefined, "admin", readRouter);
 async function createSpecimen() {
-  const result = await request("POST", "/specimen-references", { species_id: "1", reference_type: "local", institution_code: "TEST", catalog_number: "001" });
+  const result = await request("POST", "/specimen-references", { reference_type: "local", institution_code: "TEST", catalog_number: "001" });
   assert.equal(result.status, 201);
   return result.body.id;
 }
@@ -439,13 +440,13 @@ test("description moves require destination membership and compatible synthesize
 
 test("specimen reference CRUD validates fields, preserves string IDs and respects restrictions", async () => {
   await query("INSERT INTO publications (id,citation) VALUES (1,'Source')");
-  const created = await request("POST", "/specimen-references", { species_id: "1", reference_type: "gbif", gbif_occurrence_key: "123456", publication_id: "1" });
+  const created = await request("POST", "/specimen-references", { reference_type: "gbif", gbif_occurrence_key: "123456", publication_id: "1" });
   assert.equal(created.status, 201);
   assert.equal(created.body.gbif_occurrence_key, "123456");
   const id = created.body.id;
   assert.equal((await request("GET", `/specimen-references/${id}`)).body.publication_id, "1");
   assert.equal((await request("PATCH", `/specimen-references/${id}`, { specimen_label: "Voucher" })).body.specimen_label, "Voucher");
-  assert.equal((await request("POST", "/specimen-references", { species_id: "1", reference_type: "gbif", gbif_occurrence_key: "123456" })).status, 409);
+  assert.equal((await request("POST", "/specimen-references", { reference_type: "gbif", gbif_occurrence_key: "123456" })).status, 409);
   assert.equal((await request("POST", "/specimen-references", { reference_type: "invalid" })).status, 400);
   assert.equal((await request("PATCH", `/specimen-references/${id}`, { publication_id: 999 })).status, 404);
   assert.equal((await request("GET", "/specimen-references/999")).status, 404);
@@ -693,130 +694,6 @@ async function createWorkingSpecies() {
   return response.body;
 }
 
-test("specimens accept global working species assignments and return species metadata consistently", async () => {
-  const species = await createWorkingSpecies();
-  const response = await request("POST", "/specimen-references", { species_id: species.id, reference_type: "local", catalog_number: "AZ-17-voucher" });
-  assert.equal(response.status, 201);
-  assert.equal(response.body.species_id, species.id);
-  assert.equal(response.body.species.working_name, "AZ-17");
-  assert.equal(response.body.species.specific_epithet, null);
-  const fetched = await request("GET", `/specimen-references/${response.body.id}`);
-  assert.equal(fetched.status, 200);
-  assert.equal(fetched.body.species.id, species.id);
-  assert.equal(fetched.body.species.gbif_taxon_key, "1234567");
-  assert.equal(fetched.body.species.genus, "Apocephalus");
-  assert.equal(fetched.body.species.species_status, "work_in_progress");
-  assert.equal(Object.hasOwn(fetched.body, "workspace_id"), false);
-  assert.deepEqual(await query("SELECT * FROM workspace_species WHERE species_id = ?", [species.id]), []);
-});
-
-test("specimen assignments validate required IDs, missing species and nulls without changing existing data", async () => {
-  assert.equal((await request("POST", "/specimen-references", { reference_type: "local" })).status, 400);
-  const specimenId = await createSpecimen();
-  for (const value of [null, "0", "-1", "abc", "18446744073709551616", 9007199254740992]) {
-    assert.equal((await request("POST", "/specimen-references", { species_id: value, reference_type: "local" })).status, 400);
-    assert.equal((await request("PATCH", `/specimen-references/${specimenId}`, { species_id: value })).status, 400);
-  }
-  for (const [method, url, body] of [
-    ["POST", "/specimen-references", { species_id: "999", reference_type: "local" }],
-    ["PATCH", `/specimen-references/${specimenId}`, { species_id: "999", notes: "Should roll back" }],
-  ]) {
-    const response = await request(method, url, body);
-    assert.equal(response.status, 404);
-    assert.match(response.body.error, /species.*not found/);
-    assert.doesNotMatch(response.body.error, /FOREIGN KEY|constraint|INSERT|UPDATE/);
-  }
-  const fetched = await request("GET", `/specimen-references/${specimenId}`);
-  assert.equal(fetched.body.species_id, "1");
-  assert.equal(fetched.body.notes, null);
-});
-
-test("legacy nullable assignments remain readable and can acquire a valid current species", async () => {
-  await query("INSERT INTO specimen_references (id, reference_type) VALUES (1,'local')");
-  let fetched = await request("GET", "/specimen-references/1");
-  assert.equal(fetched.body.species_id, null);
-  assert.equal(fetched.body.species, null);
-  await linkSpecimen("1");
-  const raw = await assertObservation("1");
-  await put(1, { state_ids: [1] });
-  await specimenEvidence([raw.id]);
-  const legacyDetail = await detail();
-  assert.equal(legacyDetail.body.specimen_references[0].species, null);
-  assert.equal(legacyDetail.body.character_observations[0].specimen_evidence[0].specimen_reference.species, null);
-  assert.equal((await request("PATCH", "/specimen-references/1", { species_id: "1" })).status, 200);
-  fetched = await request("GET", "/specimen-references/1");
-  assert.equal(fetched.body.species.id, "1");
-});
-
-test("taxonomic reassignment preserves assertions, synthesis, evidence links and historical publications", async () => {
-  const specimenId = await createSpecimen();
-  const species = await createWorkingSpecies();
-  await query("INSERT INTO publications (id,citation) VALUES (1,'Historical assignment and scoring')");
-  await linkSpecimen(specimenId, 1, { reported_material_examined: true, directly_examined: true, notes: "Historical material" });
-  await request("POST", `/descriptions/1/specimens/${specimenId}/publications`, { publication_id: "1" });
-  await request("POST", "/descriptions/1/publications", { publication_id: "1" });
-  const assertion = await assertObservation(specimenId, { state_ids: [2], observation_basis: "publication", source_publication_id: "1", attribution_text: "Original scorer" });
-  await put(1, { state_ids: [1], evidence_basis: "mixed" });
-  await specimenEvidence([assertion.id]);
-  await publicationEvidence(["1"]);
-
-  const tables = ["specimen_observations", "specimen_observation_states", "character_observations", "observation_states",
-    "character_observation_specimen_evidence", "character_observation_publications", "description_specimens",
-    "description_specimen_publications", "description_publications", "publications", "species_descriptions"];
-  const before = await Promise.all(tables.map((table) => query(`SELECT * FROM ${table}`)));
-  const changed = await request("PATCH", `/specimen-references/${specimenId}`, { species_id: species.id });
-  assert.equal(changed.status, 200);
-  assert.equal(changed.body.id, specimenId);
-  assert.equal(changed.body.species_id, species.id);
-  assert.equal(changed.body.species.working_name, "AZ-17");
-  const after = await Promise.all(tables.map((table) => query(`SELECT * FROM ${table}`)));
-  assert.deepEqual(after, before);
-  const response = await detail();
-  assert.equal(response.body.species.id, "1");
-  assert.equal(response.body.specimen_references[0].species_id, species.id);
-  assert.equal(response.body.specimen_references[0].species.working_name, "AZ-17");
-  const evidence = response.body.character_observations[0].specimen_evidence[0];
-  assert.equal(evidence.id, assertion.id);
-  assert.equal(evidence.specimen_reference.species.id, species.id);
-  assert.equal(evidence.states[0].id, "2");
-  assert.equal(evidence.source_publication.citation, "Historical assignment and scoring");
-  const rawResponse = await request("PATCH", `/specimen-observations/${assertion.id}`, { notes: "Only metadata" });
-  assert.equal(rawResponse.body.specimen_reference.species.id, species.id);
-});
-
-test("species deletion is controlled and atomic while specimens are assigned, then works after reassignment/deletion", async () => {
-  const specimenId = await createSpecimen();
-  const species = await createWorkingSpecies();
-  await put(1, { state_ids: [1] });
-  const blocked = await request("DELETE", "/species/1");
-  assert.equal(blocked.status, 409);
-  assert.match(blocked.body.error, /specimens are currently assigned/);
-  assert.doesNotMatch(blocked.body.error, /FOREIGN KEY|constraint|DELETE FROM/);
-  assert.equal((await query("SELECT * FROM species_descriptions")).length, 2);
-  assert.equal((await query("SELECT * FROM character_observations")).length, 1);
-  assert.equal((await request("PATCH", `/specimen-references/${specimenId}`, { species_id: species.id })).status, 200);
-  assert.equal((await request("DELETE", "/species/1")).status, 204);
-  assert.equal((await request("GET", `/specimen-references/${specimenId}`)).body.species_id, species.id);
-  assert.equal((await request("DELETE", `/species/${species.id}`)).status, 409);
-  assert.equal((await request("DELETE", `/specimen-references/${specimenId}`)).status, 204);
-  assert.equal((await request("DELETE", `/species/${species.id}`)).status, 204);
-});
-
-test("GBIF occurrence validation, uniqueness and external IDs are unchanged by specimen reassignment", async () => {
-  const species = await createWorkingSpecies();
-  const created = await request("POST", "/specimen-references", { species_id: "1", reference_type: "gbif", gbif_occurrence_key: "123456789" });
-  assert.equal(created.status, 201);
-  assert.equal(created.body.gbif_occurrence_key, "123456789");
-  assert.equal((await request("POST", "/specimen-references", { species_id: species.id, reference_type: "gbif", gbif_occurrence_key: "123456789" })).status, 409);
-  for (const key of ["0", "abc", "18446744073709551616"]) {
-    assert.equal((await request("PATCH", `/specimen-references/${created.body.id}`, { gbif_occurrence_key: key })).status, 400);
-  }
-  const changed = await request("PATCH", `/specimen-references/${created.body.id}`, { species_id: species.id });
-  assert.equal(changed.body.gbif_occurrence_key, "123456789");
-  assert.equal(changed.body.species.gbif_taxon_key, "1234567");
-  assert.equal((await request("PATCH", `/specimen-references/${created.body.id}`, { gbif_occurrence_key: null })).body.gbif_occurrence_key, null);
-});
-
 for (const [name, identifiers, expected] of [
   ["legacy GBIF only", { gbif_taxon_key: "1234567" }, { gbif_taxon_key: "1234567", col_xr_taxon_key: null }],
   ["alphanumeric COL XR only", { col_xr_taxon_key: "Q2M4" }, { gbif_taxon_key: null, col_xr_taxon_key: "Q2M4" }],
@@ -875,6 +752,7 @@ test("workspace, description, specimen, provenance and key species reads include
   assert.equal(workspaceSpecies.status, 200);
   check(workspaceSpecies.body[0]);
   const specimenId = await createSpecimen();
+  await query("UPDATE specimen_references SET species_id=1 WHERE id=?", [specimenId]); // legacy provenance fixture
   const specimen = await request("GET", `/specimen-references/${specimenId}`);
   check(specimen.body.species);
   await linkSpecimen(specimenId);
@@ -1104,24 +982,18 @@ function mockLive(t, rows = [liveOccurrence]) {
 }
 const specimenLookup = (q, source = "cache", token = "admin") => request("GET", `/lookup/gbif/specimens?${new URLSearchParams({ q, source })}`, undefined, token, readRouter);
 
-test("global curated specimen search matches IDs, metadata and current published/WIP names", async () => {
-  const working = await createWorkingSpecies();
-  const specimen = await request("POST", "/specimen-references", { reference_type: "local", species_id: working.id, institution_code: "USNM", catalog_number: "12345", specimen_label: "Voucher alpha" });
-  for (const q of [specimen.body.id, "USNM 12345", "Voucher alpha", "Apocephalus AZ-17"]) {
-    const result = await request("GET", `/specimen-references/search?q=${encodeURIComponent(q)}`);
-    assert.equal(result.status, 200, result.error?.message);
-    assert.equal(result.body.length, 1);
-    assert.equal(result.body[0].id, specimen.body.id);
-    assert.equal(result.body[0].species.working_name, "AZ-17");
-    assert.equal(result.body[0].species.gbif_taxon_key, "1234567");
-    assert.equal(result.body[0].species.col_xr_taxon_key, null);
-    assert.equal(result.body[0].observation_count, 0);
+test("global specimen search is independent of workspace and legacy species is explicitly readable", async () => {
+  const specimenId = await createSpecimen();
+  await query("UPDATE specimen_references SET species_id=1 WHERE id=?", [specimenId]); // legacy fixture only
+  const global = await request("GET", "/specimen-references/search?q=Testphora");
+  assert.equal(global.body[0].id, specimenId);
+  assert.equal(global.body[0].legacy_species.id, "1");
+  assert.equal(global.body[0].workspace_identification, null);
+  for (const workspaceId of ["1", "2"]) {
+    const scoped = await request("GET", `/specimen-references/search?q=&workspace_id=${workspaceId}`);
+    assert.deepEqual(scoped.body.map((row) => row.id), [specimenId]);
+    assert.equal(scoped.body[0].workspace_identification, null);
   }
-  await request("PATCH", `/specimen-references/${specimen.body.id}`, { species_id: "1" });
-  assert.equal((await request("GET", "/specimen-references/search?q=Testphora%20alpha")).body.length, 1);
-  await assertObservation(specimen.body.id);
-  assert.equal((await request("GET", `/specimen-references/${specimen.body.id}`)).body.observation_count, 1);
-  assert.equal((await request("GET", "/specimen-references/search?q=%25%25")).body.length, 0);
 });
 
 test("cache fuzzy specimen lookup matches combinations of real schema fields", async () => {
@@ -1184,7 +1056,7 @@ test("cache and live normalize consistently, preserving two independent species 
 test("lookup annotates existing specimens and resolves suggested species by COL, GBIF then unique exact name", async (t) => {
   await seedOccurrence();
   await query("UPDATE species SET genus='Myriophora', specific_epithet='wellsorum', gbif_taxon_key='9608828' WHERE id=1");
-  const existing = await request("POST", "/specimen-references", { species_id: "1", reference_type: "gbif", gbif_occurrence_key: "4021395742" });
+  const existing = await request("POST", "/specimen-references", { reference_type: "gbif", gbif_occurrence_key: "4021395742" });
   const cache = (await specimenLookup("LACM")).body.results[0];
   assert.equal(cache.existing_specimen_id, existing.body.id);
   assert.equal(cache.species_suggestion.id, "1");
@@ -1201,50 +1073,40 @@ test("lookup annotates existing specimens and resolves suggested species by COL,
   assert.equal((await specimenLookup("LACM")).body.results[0].species_suggestion, null);
 });
 
-test("specimen import is idempotent by occurrence key and never overwrites curated assignment on retry", async () => {
+test("global occurrence import is idempotent and writes no legacy or workspace assignment", async () => {
   await seedOccurrence();
-  const values = { species_id: "1", gbif_occurrence_key: "4021395742", specimen_label: "Confirmed voucher" };
+  const values = { gbif_occurrence_key: "4021395742", specimen_label: "Voucher" };
   const first = await request("POST", "/specimen-references/import", values);
-  assert.equal(first.status, 200, first.error?.message);
+  assert.equal(first.status, 200);
   assert.equal(first.body.created, true);
-  assert.equal(first.body.specimen.reference_type, "gbif");
-  assert.equal(first.body.specimen.species.id, "1");
-  assert.equal(first.body.specimen.institution_code, "LACM");
+  assert.equal(first.body.specimen.species_id, null);
   assert.equal(first.body.specimen.collection_code, "ENT");
-  assert.equal(first.body.specimen.specimen_label, "Confirmed voucher");
-  const working = await createWorkingSpecies();
-  await request("PATCH", `/specimen-references/${first.body.specimen.id}`, { species_id: working.id });
   await query("DELETE FROM gbif_occurrence_phoridae");
   const retry = await request("POST", "/specimen-references/import", values);
   assert.equal(retry.status, 200);
   assert.equal(retry.body.created, false);
   assert.equal(retry.body.specimen.id, first.body.specimen.id);
-  assert.equal(retry.body.specimen.species.id, working.id);
-  assert.equal(retry.body.specimen.collection_code, "ENT");
   assert.equal((await query("SELECT * FROM specimen_references")).length, 1);
-  assert.equal((await request("POST", "/specimen-references", { species_id: "1", reference_type: "gbif", gbif_occurrence_key: "4021395742" })).status, 409);
+  assert.deepEqual(await query("SELECT * FROM workspace_specimen_identifications"), []);
 });
 
-test("missing cached occurrence imports through exact live lookup with a confirmed WIP assignment", async (t) => {
+test("live fallback imports a global voucher without identification", async (t) => {
   const fetch = mockLive(t);
-  const working = await createWorkingSpecies();
-  const result = await request("POST", "/specimen-references/import", { species_id: working.id, gbif_occurrence_key: "4021395742" });
+  const result = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742" });
   assert.equal(result.status, 200);
-  assert.equal(result.body.specimen.species.working_name, "AZ-17");
+  assert.equal(result.body.specimen.species_id, null);
   assert.equal(result.body.specimen.collection_code, "ENT");
-  assert.equal(result.body.specimen.specimen_label, null);
   assert.equal(fetch.mock.calls[0].arguments[0].pathname, "/v1/occurrence/4021395742");
-  assert.equal((await query("SELECT * FROM workspace_species WHERE species_id = ?", [working.id])).length, 0);
 });
 
 test("manual duplicate discovery warns without imposing identity or uniqueness", async () => {
-  const values = { species_id: "1", reference_type: "local", institution_code: "USNM", catalog_number: "12345" };
+  const values = { reference_type: "local", institution_code: "USNM", catalog_number: "12345" };
   const first = await request("POST", "/specimen-references", values);
   const duplicates = await request("GET", "/specimen-references/duplicates?institution_code=usnm&catalog_number=12345");
   assert.equal(duplicates.status, 200);
   assert.equal(duplicates.body.length, 1);
   assert.equal(duplicates.body[0].id, first.body.id);
-  assert.equal(duplicates.body[0].species.id, "1");
+  assert.equal(duplicates.body[0].legacy_species, null);
   assert.equal((await request("POST", "/specimen-references", values)).status, 201);
   assert.equal((await request("GET", "/specimen-references/duplicates")).status, 400);
 });
@@ -1267,7 +1129,7 @@ test("lookup failures are controlled and do not prevent cache search or manual c
   assert.equal(failed.status, 502);
   assert.doesNotMatch(failed.body.error, /Private upstream detail/);
   assert.equal((await specimenLookup("LACM")).body.results.length, 1);
-  assert.equal((await request("POST", "/specimen-references", { species_id: "1", reference_type: "local" })).status, 201);
+  assert.equal((await request("POST", "/specimen-references", { reference_type: "local" })).status, 201);
   const original = db.query;
   t.mock.method(db, "query", async (sql, params) => {
     if (sql.includes("FROM gbif_occurrence_phoridae")) throw new Error("Private database error");
@@ -1277,8 +1139,8 @@ test("lookup failures are controlled and do not prevent cache search or manual c
 });
 
 test("specimen lookup and import validate bodies, missing species and admin authorization", async () => {
-  assert.equal((await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742" })).status, 400);
-  assert.equal((await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742", species_id: "999" })).status, 404);
+  assert.equal((await request("POST", "/specimen-references/import", { workspace_id: "1", gbif_occurrence_key: "4021395742" })).status, 400);
+  assert.equal((await request("POST", "/specimen-references/import", { workspace_id: "1", gbif_occurrence_key: "4021395742", species_id: "999" })).status, 404);
   assert.equal((await request("POST", "/specimen-references/import", { gbif_occurrence_key: "invalid", species_id: "1" })).status, 400);
   assert.equal((await specimenLookup("")).status, 400);
   assert.equal((await specimenLookup("LACM", "unknown")).status, 400);
@@ -1291,7 +1153,7 @@ test("missing live occurrences yield an empty lookup and a controlled import 404
   const response = await specimenLookup("4021395742", "live_gbif");
   assert.equal(response.status, 200);
   assert.deepEqual(response.body.results, []);
-  const imported = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742", species_id: "1" });
+  const imported = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742" });
   assert.equal(imported.status, 404);
   assert.equal((await query("SELECT * FROM specimen_references")).length, 0);
 });
@@ -1308,7 +1170,7 @@ test("live fuzzy lookup selects the accepted exact family and filters broad upst
 });
 
 test("specimen collection code supports manual create, patch, null and omitted-field compatibility", async () => {
-  const fields = { species_id: "1", reference_type: "local", institution_code: "LACM", collection_code: "ENT", catalog_number: "12345", specimen_label: "Descriptive voucher label" };
+  const fields = { reference_type: "local", institution_code: "LACM", collection_code: "ENT", catalog_number: "12345", specimen_label: "Descriptive voucher label" };
   const created = await request("POST", "/specimen-references", fields);
   assert.equal(created.status, 201);
   assert.equal(created.body.collection_code, "ENT");
@@ -1323,14 +1185,14 @@ test("specimen collection code supports manual create, patch, null and omitted-f
     assert.equal((await request("PATCH", url, { collection_code: value })).status, 400);
   }
   for (const extra of [{}, { collection_code: null }, { collection_code: "ENT", institution_code: null, catalog_number: null }]) {
-    const result = await request("POST", "/specimen-references", { species_id: "1", reference_type: "local", ...extra });
+    const result = await request("POST", "/specimen-references", { reference_type: "local", ...extra });
     assert.equal(result.status, 201);
     assert.equal(result.body.collection_code, extra.collection_code || null);
   }
 });
 
 test("curated collection search matches single and combined institution/collection/catalog terms", async () => {
-  const created = await request("POST", "/specimen-references", { species_id: "1", reference_type: "local", institution_code: "LACM", collection_code: "ENT", catalog_number: "12345" });
+  const created = await request("POST", "/specimen-references", { reference_type: "local", institution_code: "LACM", collection_code: "ENT", catalog_number: "12345" });
   for (const q of ["ENT", "LACM ENT", "LACM ENT 12345"]) {
     const response = await request("GET", `/specimen-references/search?q=${encodeURIComponent(q)}`);
     assert.equal(response.status, 200);
@@ -1342,7 +1204,7 @@ test("curated collection search matches single and combined institution/collecti
 
 test("duplicate discovery requires every supplied normalized identity component and keeps collection-less fallback", async () => {
   const create = async (institution_code, collection_code) => (await request("POST", "/specimen-references", {
-    species_id: "1", reference_type: "local", institution_code, collection_code, catalog_number: " 12345 ",
+    reference_type: "local", institution_code, collection_code, catalog_number: " 12345 ",
   })).body;
   const ent = await create(" LACM ", " ENT ");
   const other = await create("LACM", "DIP");
@@ -1350,7 +1212,7 @@ test("duplicate discovery requires every supplied normalized identity component 
   await create("USNM", "ENT");
   const exact = await request("GET", "/specimen-references/duplicates?institution_code=%20lacm%20&collection_code=%20ent%20&catalog_number=%2012345%20");
   assert.deepEqual(exact.body.map((row) => row.id), [ent.id]);
-  assert.equal(exact.body[0].collection_code, " ENT ");
+  assert.equal(exact.body[0].collection_code, "ENT");
   for (const suffix of ["", "&collection_code="]) {
     const fallback = await request("GET", `/specimen-references/duplicates?institution_code=LACM&catalog_number=12345${suffix}`);
     assert.deepEqual(fallback.body.map((row) => row.id), [ent.id, other.id, legacy.id]);
@@ -1371,4 +1233,322 @@ test("description and raw specimen provenance retain collection code and free-te
   assert.equal(description.body.specimen_references[0].collection_code, "ENT");
   assert.equal(description.body.specimen_references[0].specimen_label, "Independently descriptive label");
   assert.equal(description.body.character_observations[0].specimen_evidence[0].specimen_reference.collection_code, "ENT");
+});
+
+test("cache and live imports normalize redundant identities including user-supplied overrides", async (t) => {
+  await seedOccurrence({ catalog_number: "LACM ENT 093601" });
+  mockLive(t, [{ ...liveOccurrence, catalogNumber: "LACM ENT 093601" }]);
+  for (const source of ["cache", "live_gbif"]) {
+    const result = (await specimenLookup("4021395742", source)).body.results[0];
+    assert.equal(result.catalog_number, "093601");
+    assert.equal(result.institution_code, "LACM");
+    assert.equal(result.collection_code, "ENT");
+  }
+  const result = await request("POST", "/specimen-references/import", {
+    gbif_occurrence_key: "4021395742", catalog_number: "LACM ENT 093601",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.specimen.catalog_number, "093601");
+  assert.equal(result.body.specimen.specimen_label, null);
+  const [stored] = await query("SELECT * FROM specimen_references WHERE id = ?", [result.body.specimen.id]);
+  assert.equal(stored.catalog_number, "093601");
+  // Legacy records are compared through the same normalizer without a migration.
+  await query("INSERT INTO specimen_references (reference_type, species_id, institution_code, collection_code, catalog_number) VALUES ('local',1,'LACM','ENT','LACM ENT 093601')");
+  for (const catalog of ["093601", "LACM ENT 093601"]) {
+    const duplicates = await request("GET", `/specimen-references/duplicates?${new URLSearchParams({ institution_code: "LACM", collection_code: "ENT", catalog_number: catalog })}`);
+    assert.equal(duplicates.body.length, 2);
+  }
+});
+
+test("live fallback import stores normalized identity without a label", async (t) => {
+  mockLive(t, [{ ...liveOccurrence, catalogNumber: "LACM ENT 093601" }]);
+  const result = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.specimen.catalog_number, "093601");
+  assert.equal(result.body.specimen.specimen_label, null);
+});
+
+test("cached species binomial supplies missing name components for exact global matching", async () => {
+  await query("UPDATE species SET genus='Myriophora', specific_epithet='kungae', gbif_taxon_key=NULL WHERE id=1");
+  await seedOccurrence({ species: "Myriophora kungae", genus: null, specific_epithet: null, species_key: null, taxon_key: null });
+  const candidate = (await specimenLookup("LACM")).body.results[0];
+  assert.equal(candidate.species_suggestion.id, "1");
+  assert.equal(candidate.species_match, "scientific_name");
+  assert.equal(candidate.genus, "Myriophora");
+  assert.equal(candidate.specific_epithet, "kungae");
+});
+
+test("GBIF source identity is protected while reassignment and curated metadata preserve evidence", async () => {
+  await seedOccurrence();
+  const imported = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742" });
+  const id = imported.body.specimen.id;
+  await linkSpecimen(id);
+  const observation = await assertObservation(id);
+  await put(1, { state_ids: [1] });
+  await specimenEvidence([observation.id]);
+  const tables = ["specimen_observations", "specimen_observation_states", "description_specimens", "character_observations", "character_observation_specimen_evidence"];
+  const before = await Promise.all(tables.map((table) => query(`SELECT * FROM ${table}`)));
+  for (const change of [
+    { institution_code: "OTHER" }, { collection_code: "DIP" }, { catalog_number: "999" },
+    { gbif_occurrence_key: "12345678" }, { gbif_occurrence_key: null },
+    { reference_type: "local" }, { reference_type: "publication" },
+    { notes: "Must roll back", catalog_number: "999" },
+  ]) {
+    const result = await request("PATCH", `/specimen-references/${id}`, change);
+    assert.equal(result.status, 409, JSON.stringify(result.body));
+    assert.match(result.body.error, /source identity/);
+  }
+  const working = await createWorkingSpecies();
+  await request("PUT", `/workspaces/1/specimens/${id}/identification`, { species_id: working.id });
+  const result = await request("PATCH", `/specimen-references/${id}`, { specimen_label: "Local label", notes: "Local interpretation" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.species_id, null);
+  assert.equal(result.body.specimen_label, "Local label");
+  assert.equal(result.body.notes, "Local interpretation");
+  for (const field of ["institution_code", "collection_code", "catalog_number", "gbif_occurrence_key", "reference_type"]) assert.equal(result.body[field], imported.body.specimen[field]);
+  assert.deepEqual(await Promise.all(tables.map((table) => query(`SELECT * FROM ${table}`))), before);
+});
+
+test("GBIF import rejects source identity overrides", async () => {
+  await seedOccurrence();
+  for (const change of [{ institution_code: "OTHER" }, { collection_code: "DIP" }, { catalog_number: "999" }]) {
+    const result = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742", ...change });
+    assert.equal(result.status, 409);
+  }
+  assert.deepEqual(await query("SELECT * FROM specimen_references"), []);
+});
+
+const identificationUrl = (workspaceId, specimenId) => `/workspaces/${workspaceId}/specimens/${specimenId}/identification`;
+test("workspace identifications are independent current interpretations with transactional membership", async () => {
+  const id = await createSpecimen();
+  const working = await createWorkingSpecies();
+  const a = await request("PUT", identificationUrl(1, id), { species_id: "1", notes: "Workspace A" });
+  const b = await request("PUT", identificationUrl(2, id), { species_id: working.id, notes: "Workspace B" });
+  assert.equal(a.status, 200); assert.equal(b.status, 200);
+  assert.equal(b.body.identified_by_uid, "editor");
+  assert.equal(b.body.species.species_status, "work_in_progress");
+  assert.equal((await request("GET", identificationUrl(1, id))).body.species_id, "1");
+  const changed = await request("PUT", identificationUrl(1, id), { species_id: working.id });
+  assert.equal(changed.body.notes, "Workspace A");
+  assert.equal((await request("GET", identificationUrl(2, id))).body.notes, "Workspace B");
+  await request("PUT", identificationUrl(1, id), { species_id: working.id }); // retry is an update
+  assert.equal((await query("SELECT * FROM workspace_specimen_identifications")).length, 2);
+  assert.equal((await query("SELECT * FROM workspace_species WHERE workspace_id=1")).length, 2);
+  assert.equal((await query("SELECT * FROM workspace_species WHERE workspace_id=2")).length, 2);
+  assert.equal((await query("SELECT * FROM specimen_references WHERE id=?", [id]))[0].species_id, null);
+  assert.equal((await request("DELETE", `/workspaces/1/species/${working.id}`)).status, 409);
+});
+
+test("legacy assignments remain readable but never fall back into workspace identification", async () => {
+  const id = await createSpecimen();
+  await query("UPDATE specimen_references SET species_id=1 WHERE id=?", [id]); // historical fixture
+  const working = await createWorkingSpecies();
+  const assigned = await request("PUT", identificationUrl(1, id), { species_id: working.id });
+  assert.equal(assigned.status, 200);
+  for (const workspaceId of [1, 2]) {
+    const result = await request("GET", `/specimen-references/${id}?workspace_id=${workspaceId}`);
+    assert.equal(result.body.legacy_species.id, "1");
+    assert.equal(result.body.species_id, "1");
+    assert.equal(result.body.workspace_identification?.species_id || null, workspaceId === 1 ? working.id : null);
+  }
+  assert.equal((await request("PATCH", `/specimen-references/${id}`, { species_id: working.id })).status, 400);
+  assert.equal((await request("POST", "/specimen-references", { reference_type: "local", species_id: "1" })).status, 400);
+});
+
+test("workspace identification search annotates the global universe and supports future Data Entry filtering", async () => {
+  const id = await createSpecimen();
+  const other = (await request("POST", "/specimen-references", { reference_type: "local", specimen_label: "Another" })).body.id;
+  await request("PUT", identificationUrl(1, id), { species_id: "1" });
+  for (const workspace of [1, 2]) {
+    const result = await request("GET", `/specimen-references/search?q=&workspace_id=${workspace}`);
+    assert.deepEqual(result.body.map((row) => row.id).sort(), [id, other].sort());
+    assert.equal(result.body.find((row) => row.id === id).workspace_identification?.species_id || null, workspace === 1 ? "1" : null);
+  }
+  assert.equal((await request("GET", "/specimen-references/search?q=&workspace_id=1&species_id=1")).body.length, 1);
+  assert.equal((await request("GET", "/specimen-references/search?q=&workspace_id=2&species_id=1")).body.length, 0);
+  assert.equal((await request("GET", "/specimen-references/search?q=&species_id=1")).status, 400);
+});
+
+test("workspace identification validates ownership context, species and authenticated attribution", async () => {
+  const id = await createSpecimen();
+  for (const [url, data, expected] of [
+    [identificationUrl(999, id), { species_id: "1" }, 404],
+    [identificationUrl(1, 999), { species_id: "1" }, 404],
+    [identificationUrl(1, id), { species_id: "999" }, 404],
+    [identificationUrl(1, id), { species_id: null }, 400],
+    [identificationUrl(1, id), { species_id: "1", identified_by_uid: "forged" }, 400],
+    [identificationUrl("bad", id), { species_id: "1" }, 400],
+  ]) assert.equal((await request("PUT", url, data)).status, expected);
+  assert.equal((await request("GET", identificationUrl(1, id))).body, null);
+  assert.deepEqual(await query("SELECT * FROM workspace_specimen_identifications"), []);
+});
+
+test("identification preserves all observation, publication, description and evidence provenance", async () => {
+  const id = await createSpecimen();
+  await linkSpecimen(id);
+  await query("INSERT INTO publications (id,citation) VALUES (1,'Historical scorer')");
+  await request("POST", "/descriptions/1/publications", { publication_id: "1" });
+  await request("POST", `/descriptions/1/specimens/${id}/publications`, { publication_id: "1" });
+  const observation = await assertObservation(id, { source_publication_id: "1" });
+  await put(1, { state_ids: [1] });
+  await specimenEvidence([observation.id]);
+  const tables = ["specimen_references", "specimen_observations", "specimen_observation_states", "description_specimens", "description_specimen_publications", "character_observations", "observation_states", "character_observation_specimen_evidence", "description_publications", "publications", "species_descriptions"];
+  const before = await Promise.all(tables.map((table) => query(`SELECT * FROM ${table}`)));
+  const working = await createWorkingSpecies();
+  await request("PUT", identificationUrl(1, id), { species_id: working.id });
+  await request("PUT", identificationUrl(2, id), { species_id: "1" });
+  assert.deepEqual(await Promise.all(tables.map((table) => query(`SELECT * FROM ${table}`))), before);
+});
+
+test("GBIF suggestion acceptance atomically creates species, voucher, workspace identification and membership", async (t) => {
+  await seedOccurrence({ species: "Myriophora kungae", specific_epithet: "kungae", species_key: null });
+  t.mock.method(gbifTaxonomy, "search", async () => [{ importable: true, genus: "Myriophora", specific_epithet: "kungae", col_xr_taxon_key: "KUNGAE" }]);
+  t.mock.method(gbifTaxonomy, "resolveSpecies", async () => ({ genus: "Myriophora", specific_epithet: "kungae", species_status: "published", col_xr_taxon_key: "KUNGAE", gbif_taxon_key: null }));
+  const values = { gbif_occurrence_key: "4021395742", workspace_id: "1", accept_gbif_identification: true, identification_notes: "Reviewed suggestion" };
+  const first = await request("POST", "/specimen-references/import", values);
+  assert.equal(first.status, 200, JSON.stringify(first));
+  const specimen = first.body.specimen;
+  assert.equal(specimen.species_id, null);
+  assert.equal(specimen.workspace_identification.species.specific_epithet, "kungae");
+  assert.equal(specimen.workspace_identification.notes, "Reviewed suggestion");
+  const speciesId = specimen.workspace_identification.species_id;
+  assert.equal((await query("SELECT * FROM workspace_species WHERE workspace_id=1 AND species_id=?", [speciesId])).length, 1);
+  const retry = await request("POST", "/specimen-references/import", values);
+  assert.equal(retry.status, 200);
+  assert.equal(retry.body.created, false);
+  assert.equal(retry.body.specimen.id, specimen.id);
+  assert.equal((await query("SELECT * FROM workspace_specimen_identifications")).length, 1);
+  assert.equal((await query("SELECT * FROM species WHERE col_xr_taxon_key='KUNGAE'")).length, 1);
+  const working = await createWorkingSpecies();
+  const overridden = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742", workspace_id: "2", species_id: working.id });
+  assert.equal(overridden.body.specimen.workspace_identification.species_id, working.id);
+  assert.equal((await request("GET", identificationUrl(1, specimen.id))).body.species_id, speciesId);
+});
+
+test("existing global suggestion is reused and no workspace means no species import or identification", async (t) => {
+  await seedOccurrence();
+  await query("UPDATE species SET genus='Myriophora', specific_epithet='wellsorum', gbif_taxon_key='9608828' WHERE id=1");
+  const resolve = t.mock.method(gbifTaxonomy, "resolveSpecies", async () => { throw new Error("Should reuse global record"); });
+  const first = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742" });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.specimen.species_id, null);
+  assert.deepEqual(await query("SELECT * FROM workspace_specimen_identifications"), []);
+  const accepted = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742", workspace_id: "1", accept_gbif_identification: true });
+  assert.equal(accepted.body.specimen.workspace_identification.species_id, "1");
+  assert.equal(resolve.mock.callCount(), 0);
+});
+
+test("membership or identification failure rolls back the entire manual/import workflow", async (t) => {
+  const working = await createWorkingSpecies();
+  const original = db.query;
+  t.mock.method(db, "query", async (sql, params) => {
+    if (sql.startsWith("INSERT INTO workspace_specimen_identifications")) throw new Error("Injected identification failure");
+    return original(sql, params);
+  });
+  const created = await request("POST", "/specimen-references", { reference_type: "local", workspace_id: "1", species_id: working.id });
+  assert.equal(created.status, 500);
+  assert.deepEqual(await query("SELECT * FROM specimen_references"), []);
+  assert.deepEqual(await query("SELECT * FROM workspace_species WHERE species_id=?", [working.id]), []);
+  await seedOccurrence();
+  t.mock.method(gbifTaxonomy, "search", async () => [{ importable: true, genus: "Myriophora", specific_epithet: "wellsorum", col_xr_taxon_key: "NEW" }]);
+  t.mock.method(gbifTaxonomy, "resolveSpecies", async () => ({ genus: "Myriophora", specific_epithet: "wellsorum", col_xr_taxon_key: "NEW", gbif_taxon_key: null }));
+  const imported = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742", workspace_id: "1", accept_gbif_identification: true });
+  assert.equal(imported.status, 500);
+  assert.deepEqual(await query("SELECT * FROM specimen_references"), []);
+  assert.deepEqual(await query("SELECT * FROM species WHERE col_xr_taxon_key='NEW'"), []);
+});
+
+test("external snapshot and explicit live GBIF names never overwrite workspace interpretation", async (t) => {
+  await seedOccurrence({ accepted_scientific_name: "Myriophora kungae" });
+  const global = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742" });
+  const id = global.body.specimen.id;
+  const working = await createWorkingSpecies();
+  await request("PUT", identificationUrl(1, id), { species_id: working.id });
+  const fetch = mockLive(t, [{ ...liveOccurrence, species: "Myriophora changed", specificEpithet: "changed" }]);
+  const list = await request("GET", "/specimen-references/search?q=&workspace_id=1");
+  assert.equal(list.body[0].external_taxonomy.accepted_scientific_name, "Myriophora kungae");
+  assert.equal(fetch.mock.callCount(), 0);
+  const cache = await request("GET", `/specimen-references/${id}/external-taxonomy`);
+  assert.equal(cache.body.source, "cache");
+  const live = await request("GET", `/specimen-references/${id}/external-taxonomy?source=live_gbif`);
+  assert.equal(live.body.taxonomy.accepted_scientific_name, "Myriophora changed");
+  assert.equal((await request("GET", identificationUrl(1, id))).body.species_id, working.id);
+});
+
+test("manual creation records only a workspace interpretation and accepts WIP species", async () => {
+  const working = await createWorkingSpecies();
+  const result = await request("POST", "/specimen-references", { reference_type: "local", institution_code: "TEST", catalog_number: "001", workspace_id: "1", species_id: working.id, identification_notes: "Provisional" });
+  assert.equal(result.status, 201);
+  assert.equal(result.body.species_id, null);
+  assert.equal(Object.hasOwn(result.body, "workspace_id"), false);
+  assert.equal(result.body.workspace_identification.species.working_name, "AZ-17");
+  assert.equal(result.body.workspace_identification.notes, "Provisional");
+  assert.equal((await query("SELECT * FROM workspace_species WHERE workspace_id=1 AND species_id=?", [working.id])).length, 1);
+  assert.equal((await request("GET", identificationUrl(2, result.body.id))).body, null);
+  assert.equal((await request("GET", `/specimen-references/${result.body.id}?workspace_id=bad`)).status, 400);
+});
+
+const workspaceSpecimens = (id, q = "") => request("GET", `/workspaces/${id}/specimens?${new URLSearchParams({ q })}`);
+test("normal workspace list joins identifications without changing global voucher identity", async () => {
+  const id = await createSpecimen();
+  const working = await createWorkingSpecies();
+  await request("PUT", identificationUrl(1, id), { species_id: "1" });
+  const usa = await workspaceSpecimens(1);
+  assert.equal(usa.status, 200);
+  assert.deepEqual(usa.body.map((row) => row.id), [id]);
+  assert.equal(usa.body[0].workspace_identification.species_id, "1");
+  assert.equal(usa.body[0].observation_count, 0);
+  assert.deepEqual((await workspaceSpecimens(2)).body, []);
+  assert.equal((await request("GET", "/specimen-references/search?q=TEST&workspace_id=2")).body[0].id, id);
+  await request("PUT", identificationUrl(2, id), { species_id: working.id });
+  assert.equal((await workspaceSpecimens(2)).body[0].workspace_identification.species.working_name, "AZ-17");
+  assert.equal((await workspaceSpecimens(1)).body[0].workspace_identification.species_id, "1");
+  await request("PUT", identificationUrl(1, id), { species_id: working.id });
+  assert.equal((await workspaceSpecimens(2)).body[0].workspace_identification.species_id, working.id);
+  await query("DELETE FROM workspace_specimen_identifications WHERE workspace_id=1 AND specimen_reference_id=?", [id]);
+  assert.deepEqual((await workspaceSpecimens(1)).body, []);
+  assert.equal((await workspaceSpecimens(2)).body[0].id, id);
+  assert.equal((await query("SELECT * FROM specimen_references")).length, 1);
+  assert.equal((await query("SELECT * FROM workspace_species WHERE workspace_id=2 AND species_id=?", [working.id])).length, 1);
+});
+
+test("workspace list search cannot return another workspace's or an unassigned voucher", async () => {
+  const create = async (catalog) => (await request("POST", "/specimen-references", { reference_type: "local", institution_code: "LACM", catalog_number: catalog })).body.id;
+  const usa = await create("USA-001"), canada = await create("CAN-001");
+  await create("GLOBAL-001");
+  const working = await createWorkingSpecies();
+  await request("PUT", identificationUrl(1, usa), { species_id: "1" });
+  await request("PUT", identificationUrl(2, canada), { species_id: working.id });
+  assert.deepEqual((await workspaceSpecimens(1, "LACM")).body.map((row) => row.id), [usa]);
+  assert.deepEqual((await workspaceSpecimens(2, "LACM")).body.map((row) => row.id), [canada]);
+  assert.deepEqual((await workspaceSpecimens(2, "USA-001")).body, []);
+  assert.deepEqual((await workspaceSpecimens(1, "GLOBAL-001")).body, []);
+  assert.equal((await workspaceSpecimens(2, "AZ-17")).body[0].id, canada);
+  assert.deepEqual((await workspaceSpecimens(1, "%")).body, []);
+  assert.equal((await workspaceSpecimens("bad")).status, 400);
+  assert.equal((await workspaceSpecimens(999)).status, 404);
+  assert.equal((await workspaceSpecimens(1, "x".repeat(201))).status, 400);
+});
+
+test("reuse through global registry or GBIF creates another workspace identification, never another voucher", async () => {
+  await seedOccurrence({ catalog_number: "239648", accepted_scientific_name: "Myriophora smithi" });
+  const first = await request("POST", "/specimen-references/import", { gbif_occurrence_key: "4021395742", workspace_id: "1", species_id: "1" });
+  const id = first.body.specimen.id;
+  assert.deepEqual((await workspaceSpecimens(2)).body, []);
+  const registry = await request("GET", "/specimen-references/search?q=239648&workspace_id=2");
+  assert.equal(registry.body[0].id, id);
+  assert.equal(registry.body[0].workspace_identification, null);
+  assert.equal(registry.body[0].external_taxonomy.accepted_scientific_name, "Myriophora smithi");
+  const before = await request("GET", "/lookup/gbif/specimens?q=239648&workspace_id=2", undefined, "admin", readRouter);
+  assert.equal(before.body.results[0].existing_specimen_id, id);
+  assert.equal(before.body.results[0].workspace_identification, null);
+  const working = await createWorkingSpecies();
+  await request("PUT", identificationUrl(2, id), { species_id: working.id });
+  const after = await request("GET", "/lookup/gbif/specimens?q=239648&workspace_id=2", undefined, "admin", readRouter);
+  assert.equal(after.body.results[0].workspace_identification.species_id, working.id);
+  assert.equal((await workspaceSpecimens(2)).body[0].id, id);
+  assert.equal((await workspaceSpecimens(1)).body[0].workspace_identification.species_id, "1");
+  assert.equal((await query("SELECT * FROM specimen_references")).length, 1);
+  assert.equal((await query("SELECT * FROM workspace_specimen_identifications WHERE workspace_id=2")).length, 1);
+  assert.equal((await query("SELECT * FROM workspace_species WHERE workspace_id=2 AND species_id=?", [working.id])).length, 1);
 });

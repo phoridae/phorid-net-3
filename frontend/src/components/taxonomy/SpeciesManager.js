@@ -88,6 +88,18 @@ function AddSpecies({ workspace, members, onClose, onAdded }) {
   const memberIds = new Set(members.map((species) => String(species.id)));
   const searchResults = groupSpeciesSearchResults(local.data, external.data, members);
 
+  function switchGenusMode(checked) {
+    setManualGenus(checked);
+    // A standardized selection is not manual text (or vice versa). Reset only
+    // this field, including its validation state; retain the rest of the draft.
+    form.resetFields(["genus"]);
+    setGenusQuery(""); setMatches([]); setPendingValues(null);
+  }
+  function startNewDraft() {
+    form.resetFields();
+    setCreatedSpecies(null); setError(""); setMatches([]); setPendingValues(null); setGenusQuery("");
+  }
+
   async function attachExisting(species) {
     setBusy(true); setError("");
     try { await ensureMembership(workspace.id, species.id); onAdded(speciesName(species)); }
@@ -161,22 +173,22 @@ function AddSpecies({ workspace, members, onClose, onAdded }) {
         </>
       ) : (
         <>
-          <Form form={form} layout="vertical" initialValues={{ species_status: "work_in_progress" }} onFinish={checkManual} disabled={busy || !!createdSpecies} onValuesChange={() => { setMatches([]); setPendingValues(null); }}>
-            <Checkbox checked={manualGenus} disabled={busy || !!createdSpecies} onChange={(event) => { setManualGenus(event.target.checked); form.setFieldValue("genus", undefined); setGenusQuery(""); setMatches([]); setPendingValues(null); }}>Enter genus manually</Checkbox>
-            <Form.Item name="genus" label="Genus" rules={[{ required: true, whitespace: true, message: "Choose or enter a genus." }, { max: 128 }]}>
-              {manualGenus ? <Input placeholder="New or provisional genus" maxLength={128} /> : <Select showSearch filterOption={false} onSearch={setGenusQuery} placeholder="Search GBIF/COL genera" loading={genera.loading}
+          {!createdSpecies && <Form form={form} layout="vertical" initialValues={{ species_status: "work_in_progress" }} onFinish={checkManual} disabled={busy} onValuesChange={() => { setMatches([]); setPendingValues(null); }}>
+            <Checkbox checked={manualGenus} disabled={busy} onChange={(event) => switchGenusMode(event.target.checked)}>Enter genus manually</Checkbox>
+            <Form.Item key={manualGenus ? "manual-genus" : "standardized-genus"} name="genus" label="Genus" rules={[{ required: true, whitespace: true, message: "Choose or enter a genus." }, { max: 128 }]}>
+              {manualGenus ? <Input disabled={busy} placeholder="New or provisional genus" maxLength={128} /> : <Select disabled={busy} showSearch filterOption={false} onSearch={setGenusQuery} placeholder="Search GBIF/COL genera" loading={genera.loading}
                 options={[...new Set(genera.data.filter((taxon) => taxon.taxonomic_status === "ACCEPTED").map((taxon) => taxon.genus))].map((name) => ({ value: name, label: name }))}
                 notFoundContent={genera.loading ? <Spin size="small" /> : "Search a Phoridae genus, or enter genus manually."} />}
             </Form.Item>
             {genera.error && !manualGenus && <Alert type="error" message={genera.error} description="You may enter the genus manually." />}
             <Form.Item name="species_status" label="Species status"><Select options={[{ value: "work_in_progress", label: "Work in progress" }, { value: "published", label: "Published" }]} /></Form.Item>
-            <Form.Item name="specific_epithet" label="Specific epithet" dependencies={["species_status"]} rules={[{ max: 128 }, ({ getFieldValue }) => ({ validator: (_, value) => getFieldValue("species_status") === "published" && !value?.trim() ? Promise.reject(new Error("Published species require a specific epithet.")) : Promise.resolve() })]}><Input maxLength={128} /></Form.Item>
+            <Form.Item name="specific_epithet" label="Specific epithet" dependencies={["species_status"]} rules={[{ max: 128 }, ({ getFieldValue }) => ({ validator: (_, value) => getFieldValue("species_status") === "published" && !value?.trim() ? Promise.reject(new Error("Published species require a specific epithet.")) : Promise.resolve() })]}><Input disabled={busy} maxLength={128} /></Form.Item>
             <Form.Item name="working_name" label="Working / code name" dependencies={["species_status", "specific_epithet"]} rules={[{ max: 255 }, ({ getFieldValue }) => ({ validator: (_, value) => getFieldValue("species_status") === "work_in_progress" && !getFieldValue("specific_epithet")?.trim() && !value?.trim() ? Promise.reject(new Error("Enter a meaningful working name for an undescribed taxon.")) : Promise.resolve() })]}><Input placeholder="e.g. AZ-17" maxLength={255} /></Form.Item>
             <Form.Item name="notes" label="Notes"><Input.TextArea rows={3} /></Form.Item>
-            <Button htmlType="submit" type="primary" loading={busy} disabled={!!createdSpecies}>Check and add species</Button>
-          </Form>
+            <Button htmlType="submit" type="primary" loading={busy}>Check and add species</Button>
+          </Form>}
           {pendingValues && !createdSpecies && <div style={{ marginTop: 24 }}><Alert type="warning" message="Potential existing global species found" description="Use an existing species, or explicitly create a separate record if these represent a different taxon." /><Table size="small" dataSource={curatedRows(matches)} columns={localColumns} pagination={{ pageSize: 5 }} scroll={{ x: 620 }} /><Button disabled={busy} onClick={() => createManual(pendingValues)}>Create separate global record</Button></div>}
-          {createdSpecies && <Alert style={{ marginTop: 16 }} type="info" message="The global species record has been created." description="Retry adding this existing record to the workspace; a second global record will not be created." action={<Button disabled={busy} onClick={() => attachExisting(createdSpecies)}>Retry adding to workspace</Button>} />}
+          {createdSpecies && <Alert style={{ marginTop: 16 }} type="info" message="The global species record has been created." description="Retry adding this existing record to the workspace; a second global record will not be created." action={<Space wrap><Button disabled={busy} onClick={() => attachExisting(createdSpecies)}>Retry adding to workspace</Button><Button disabled={busy} onClick={startNewDraft}>Start a new species</Button></Space>} />}
         </>
       )}
     </Modal>

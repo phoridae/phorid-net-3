@@ -16,8 +16,14 @@ router.get("/lookup/gbif/specimens", async (req, res, next) => {
     const { q, key } = gbifSpecimens.parseQuery(req.query.q);
     const source = req.query.source || "cache";
     if (!["cache", "live_gbif"].includes(source)) return res.status(400).json({ error: "source must be cache or live_gbif" });
+    const workspaceId = req.query.workspace_id;
+    if (workspaceId != null) {
+      if (typeof workspaceId !== "string" || !/^[1-9]\d{0,19}$/.test(workspaceId) || BigInt(workspaceId) > 18446744073709551615n) return res.status(400).json({ error: "workspace_id must be a positive unsigned BIGINT" });
+      const [workspace] = await taxonomyPool.query("SELECT id FROM workspaces WHERE id = ?", [workspaceId]);
+      if (!workspace.length) return res.status(404).json({ error: "Workspace not found" });
+    }
     const candidates = await (source === "cache" ? gbifSpecimens.searchCache(q) : gbifSpecimens.searchLive(q));
-    res.json({ results: await annotateCandidates(taxonomyPool, candidates), source, query_type: key ? "occurrence_key" : "fuzzy", limit: 30 });
+    res.json({ results: await annotateCandidates(taxonomyPool, candidates, workspaceId), source, query_type: key ? "occurrence_key" : "fuzzy", limit: 30 });
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message });
     next(error);
@@ -626,6 +632,8 @@ router.get("/descriptions/:id", async (req, res, next) => {
         id: serializeId(specimen.id),
         species_id: specimen.species_id,
         species: specimen.species,
+        legacy_species_id: specimen.legacy_species_id,
+        legacy_species: specimen.legacy_species,
         reference_type: specimen.reference_type,
         gbif_occurrence_key: serializeId(specimen.gbif_occurrence_key),
         publication_id: serializeId(specimen.publication_id),

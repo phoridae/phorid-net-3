@@ -7,10 +7,10 @@ import SpeciesManager from "../components/taxonomy/SpeciesManager";
 import CharacterManager from "../components/taxonomy/CharacterManager";
 import SpecimenManager from "../components/taxonomy/SpecimenManager";
 import { useAuth } from "../auth/AuthContext";
-import { fetchTaxonomyWorkspaces, fetchWorkspaceCharacters, fetchWorkspaceSpecies, searchTaxonomySpecimens } from "../utils/api/taxonomy";
+import { fetchTaxonomyWorkspaces, fetchWorkspaceCharacters, fetchWorkspaceSpecies, searchTaxonomySpecimens, fetchWorkspaceSpecimens, fetchTaxonomySpecimen, putWorkspaceSpecimenIdentification, searchTaxonomySpecies } from "../utils/api/taxonomy";
 
 jest.mock("../auth/AuthContext", () => ({ useAuth: jest.fn() }));
-jest.mock("../utils/api/taxonomy", () => ({ fetchTaxonomyWorkspaces: jest.fn(), fetchWorkspaceSpecies: jest.fn(), fetchWorkspaceCharacters: jest.fn(), searchTaxonomySpecimens: jest.fn() }));
+jest.mock("../utils/api/taxonomy", () => ({ fetchTaxonomyWorkspaces: jest.fn(), fetchWorkspaceSpecies: jest.fn(), fetchWorkspaceCharacters: jest.fn(), searchTaxonomySpecimens: jest.fn(), fetchWorkspaceSpecimens: jest.fn(), fetchTaxonomySpecimen: jest.fn(), putWorkspaceSpecimenIdentification: jest.fn(), searchTaxonomySpecies: jest.fn() }));
 
 const workspaces = [
   { id: "9007199254740993", name: "Canada revision", description: "Canadian research", visibility: "private", owner_uid: "another-researcher" },
@@ -57,6 +57,7 @@ beforeEach(() => {
   fetchWorkspaceSpecies.mockResolvedValue([]);
   fetchWorkspaceCharacters.mockResolvedValue([]);
   searchTaxonomySpecimens.mockResolvedValue([]);
+  fetchWorkspaceSpecimens.mockResolvedValue([]);
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -155,7 +156,7 @@ test("section URLs and browser history stay in sync while sharing workspace stat
   await chooseWorkspace("Canada revision");
   for (const [name, path] of [["Specimens", "specimens"], ["Characters", "characters"], ["Data Entry", "data-entry"], ["Descriptions", "descriptions"], ["Keys", "keys"]]) {
     fireEvent.click(screen.getByRole("tab", { name }));
-    expect(await screen.findByRole("heading", { name: name === "Characters" ? "Characters in this workspace" : name })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: name === "Characters" ? "Characters in this workspace" : name === "Specimens" ? "Specimens in Canada revision" : name })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByLabelText("Current path")).toHaveTextContent(`/admin/taxonomy/${path}`);
     expect(screen.getByLabelText("Current workspace")).toHaveTextContent("Canada revision");
@@ -173,8 +174,8 @@ test("a direct section link restores the workspace and permits changing it witho
   initialPath = "/admin/taxonomy/specimens";
   sessionStorage.setItem("taxonomy-workspace:editor", "2");
   render(<TaxonomyWorkbench />);
-  expect(await screen.findByRole("heading", { name: "Specimens" })).toBeInTheDocument();
-  expect(screen.getByText("Specimens are global records and are not owned by a workspace.")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Specimens in USA revision" })).toBeInTheDocument();
+  expect(screen.getByText("These are global specimen records currently being interpreted in this workspace.")).toBeInTheDocument();
   expect(await screen.findByLabelText("Current workspace")).toHaveTextContent("USA revision");
   await chooseWorkspace("Canada revision");
   expect(screen.getByLabelText("Current path")).toHaveTextContent("/admin/taxonomy/specimens");
@@ -192,18 +193,44 @@ test("Data Entry presents both specimen scoring and literature digitization as p
   expect(screen.getByText("Tools for this section will be added next.")).toBeInTheDocument();
 });
 
-test("global specimen search works without a workspace and persists unchanged across workspace changes", async () => {
+test("normal specimen list requires workspace selection and preserves its query when workspace changes", async () => {
   initialPath = "/admin/taxonomy/specimens";
-  searchTaxonomySpecimens.mockResolvedValue([{ id: "17", specimen_label: "Global voucher", species: null, reference_type: "local" }]);
+  fetchWorkspaceSpecimens.mockResolvedValue([{ id: "17", specimen_label: "Global voucher", reference_type: "local" }]);
+  render(<TaxonomyWorkbench />);
+  await screen.findByText(/Select a workspace to see specimens currently interpreted there/);
+  expect(fetchWorkspaceSpecimens).not.toHaveBeenCalled();
+  expect(screen.getByLabelText("Search curated specimens")).toBeDisabled();
+  await chooseWorkspace("Canada revision");
+  await screen.findByText("Global voucher");
+  fireEvent.change(screen.getByLabelText("Search curated specimens"), { target: { value: "USNM" } });
+  await waitFor(() => expect(fetchWorkspaceSpecimens).toHaveBeenLastCalledWith("9007199254740993", "USNM", expect.any(Object)));
+  await chooseWorkspace("USA revision");
+  expect(screen.getByLabelText("Search curated specimens")).toHaveValue("USNM");
+  await waitFor(() => expect(fetchWorkspaceSpecimens).toHaveBeenLastCalledWith("2", "USNM", expect.any(Object)));
+  expect(searchTaxonomySpecimens).not.toHaveBeenCalled();
+});
+
+test("saving a workspace specimen identification makes its species available in the Species tab", async () => {
+  initialPath = "/admin/taxonomy/specimens";
+  sessionStorage.setItem("taxonomy-workspace:editor", "2");
+  const working = { id: "9", genus: "Myriophora", working_name: "JH-04", species_status: "work_in_progress" };
+  const specimen = { id: "17", specimen_label: "Global voucher", reference_type: "local", workspace_identification: { workspace_id: "2", species_id: "1", species: { id: "1", genus: "Phoragenus", specific_epithet: "alpha", species_status: "published" } } };
+  let assigned = false;
+  fetchWorkspaceSpecimens.mockResolvedValue([specimen]);
+  fetchTaxonomySpecimen.mockResolvedValue(specimen);
+  searchTaxonomySpecies.mockResolvedValue([working]);
+  putWorkspaceSpecimenIdentification.mockImplementation(async () => { assigned = true; return { workspace_id: "2", species_id: "9", species: working }; });
+  fetchWorkspaceSpecies.mockImplementation(async () => assigned ? [working] : []);
   render(<TaxonomyWorkbench />);
   await screen.findByText("Global voucher");
-  expect(screen.queryByLabelText("Current workspace")).not.toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText("Search curated specimens"), { target: { value: "USNM" } });
-  await waitFor(() => expect(searchTaxonomySpecimens).toHaveBeenCalledTimes(2));
-  await chooseWorkspace("Canada revision");
-  await chooseWorkspace("USA revision");
-  expect(screen.getByLabelText("Current workspace")).toHaveTextContent("USA revision");
-  expect(screen.getByLabelText("Search curated specimens")).toHaveValue("USNM");
-  expect(screen.getByText("Global voucher")).toBeInTheDocument();
-  expect(searchTaxonomySpecimens).toHaveBeenCalledTimes(2);
+  fireEvent.click(screen.getByRole("button", { name: "View/edit specimen" }));
+  const picker = await screen.findByRole("combobox", { name: "Identification in USA revision" });
+  fireEvent.mouseDown(picker);
+  fireEvent.change(picker, { target: { value: "JH-04" } });
+  fireEvent.click(await screen.findByText("Myriophora sp. JH-04 · WIP", { selector: ".ant-select-item-option-content" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save workspace identification" }));
+  await screen.findByText("Specimen saved. Existing observations and evidence are unchanged.");
+  expect(putWorkspaceSpecimenIdentification).toHaveBeenCalledWith("2", "17", { species_id: "9", notes: null });
+  fireEvent.click(screen.getByRole("tab", { name: "Species" }));
+  expect(await screen.findByText("Myriophora sp. JH-04")).toBeInTheDocument();
 });

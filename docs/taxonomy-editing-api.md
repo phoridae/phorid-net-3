@@ -144,13 +144,13 @@ Specimen evidence endpoints:
 
 | Method | Route | Body / behavior |
 | --- | --- | --- |
-| POST | `/specimen-references` | `reference_type` and `species_id` required; other fields below optional |
+| POST | `/specimen-references` | `reference_type` required; optional workspace identification below |
 | GET | `/specimen-references/search?q=...` | Global curated search; empty query lists recent records |
 | GET | `/specimen-references/duplicates?catalog_number=...&institution_code=...&collection_code=...` | Likely manual duplicates; institution and collection optional |
 | GET | `/lookup/gbif/specimens?q=...&source=cache` | One fuzzy/exact lookup; `source=live_gbif` explicitly searches current GBIF |
-| POST | `/specimen-references/import` | `gbif_occurrence_key`, confirmed `species_id`, optional supported metadata |
+| POST | `/specimen-references/import` | `gbif_occurrence_key`; optional `workspace_id` with species ID or accepted suggestion |
 | POST | `/species/import` | `col_xr_taxon_key`; same species resolver/reuse transaction, without workspace membership |
-| GET | `/specimen-references/:id` | Specimen reference record with current species metadata |
+| GET | `/specimen-references/:id` | Global voucher, explicit legacy metadata, optional workspace identification |
 | PATCH | `/specimen-references/:id` | Supplied specimen fields only |
 | DELETE | `/specimen-references/:id` | `204`; description associations restrict deletion with `409` |
 | POST | `/descriptions/:id/specimens` | `specimen_reference_id` required; `reported_material_examined`, `directly_examined`, `notes` optional |
@@ -172,7 +172,7 @@ relationship/duplicate conflict conventions. Specimen-evidence and publication-e
 relationship mismatches return `400`; missing resources return `404`. Replacement
 operations are transactional, deduplicate IDs, and accept empty arrays to clear links.
 
-Specimen reference fields match the schema: `species_id`, `reference_type` (`gbif`, `local`,
+Writable global specimen reference fields: `reference_type` (`gbif`, `local`,
 `publication`), nullable `gbif_occurrence_key`, `publication_id`, `institution_code`
 (64 characters), `collection_code` (64), `catalog_number` (128), `specimen_label` (255), and `notes` (TEXT).
 Institution, collection, and catalog number are separate optional identity
@@ -190,42 +190,41 @@ Publication IDs must exist when supplied; duplicate GBIF occurrence keys return
 specimen cascades its raw observations; a specimen still associated with a
 description cannot be deleted.
 
-Every new specimen must have a current species assignment. POST requires an
-existing `species_id`; PATCH accepts a new `species_id` to change that assignment.
-Malformed, null, zero, or unsafe numeric IDs return `400`. A well-formed ID for a
-missing species returns controlled `404`. PATCH with species_id omitted retains
-the assignment. A species need not belong to any workspace to be assigned to a
-specimen. Working/code-name species are valid, for example:
+A global specimen does not require a species. `specimen_references.species_id`
+remains a nullable LEGACY column; new writes must not assign it. Metadata PATCH
+rejects `species_id` with `400`. POST with a species ID but no workspace also
+returns `400` to prevent accidental global assignments. Existing legacy values
+are exposed as `legacy_species_id` and `legacy_species`; the original `species_id`
+and `species` response properties are deprecated aliases retained for old readers.
+They never represent or fall back into a selected workspace's identification.
+Description-detail and nested observation/provenance specimen reads retain these
+legacy aliases for compatibility. No legacy assignment is migrated automatically.
 
-```json
-{
-  "genus": "Apocephalus",
-  "specific_epithet": null,
-  "species_status": "work_in_progress",
-  "working_name": "AZ-17"
-}
-```
+Workspace identification endpoints (all Firebase-admin authenticated):
 
-Create that global species with `POST /species`, then use its ID in
-`POST /specimen-references` or PATCH an existing specimen. Assignment updates
-change only the specimen reference record. Specimen observations, synthesized
-character observations, historical publications, description-specimen links, and
-all evidence relationships remain intact. A historical description can therefore
-retain a specimen whose current assignment differs from that description's species.
-No identification history or competing identification assertion is generated.
+| Method | Path | Behavior |
+|---|---|---|
+| GET | `/workspaces/:workspaceId/specimens/:specimenId/identification` | Current row including nested species, or JSON null if unidentified; missing workspace/specimen is `404` |
+| PUT | Same path | Required `species_id`, optional nullable `notes`; returns current row with `200` |
 
-Specimen POST/PATCH/GET responses include the string `species_id` and a nested
-`species` record containing string `id`/`gbif_taxon_key`, genus, specific epithet,
-nullable string `col_xr_taxon_key`, species status, and working name, along with other species metadata. The same
-species information appears in description-detail `specimen_references` and nested
-specimen references in raw observation and provenance responses.
+PUT validates workspace, global specimen, and published/WIP global species.
+It locks the workspace and specimen, inserts or updates the single composite-key
+row, sets `identified_by_uid` from the authenticated Firebase UID, and ensures
+`workspace_species(workspace_id,species_id)` in the same transaction. Client-supplied
+attribution is rejected. Omitted notes preserve an existing row's notes; explicit
+null clears them. Updating retains creation time and advances update time. No
+history versions or automatic removal of previous species membership are created.
+Repeated PUT is safe; concurrent edits follow existing controlled `409` retry
+semantics. No DELETE identification route is provided in this transition.
+Removing workspace species membership while an identification uses it returns
+`409`. All existing admin-wide authorization conventions still apply.
 
-Compatibility: the authoritative schema still allows `species_id = NULL`, and
-existing dump records use that value. Legacy specimens remain readable with
-`species_id: null` and `species: null`; metadata PATCH does not implicitly assign
-them. Explicitly PATCH a valid species ID to assign them. New API creates require
-species_id and PATCH rejects clearing it, so existing clients creating specimens
-must supply the assignment. This task does not backfill legacy data or change DDL.
+Creation/import accepts `workspace_id`, `species_id`, and `identification_notes`
+for an explicit workspace interpretation. These fields are consumed by the
+workflow and never stored on the global voucher. The UI permits importing only
+the global voucher instead. Without a workspace there is no identification and
+no membership. Both published and WIP species are valid. Workspace identifications
+never change raw specimen observations or historical interpretation/evidence links.
 
 External identity remains independent of the research cache. The small, durable
 taxonomy database directly stores the legacy GBIF Backbone key in
@@ -309,7 +308,7 @@ are never merged or auto-selected.
 `GET /descriptions/:id` preserves the existing response shape and adds:
 
 - Interpretation label/type, attribution, and string/null derivation ID.
-- On each `specimen_references` entry, current `species_id`/`species`, boolean examination flags, existing
+- On each `specimen_references` entry, deprecated legacy `species_id`/`species` and explicit `legacy_species_id`/`legacy_species`, boolean examination flags, existing
   `association_notes`, and `material_examined_publications` with reporting provenance.
 - On each `character_observations` entry, `evidence_basis`, `publication_evidence`,
   and `specimen_evidence` arrays. Each linked specimen assertion retains its ID,
@@ -331,10 +330,10 @@ Removal rules and errors:
   workspaces, including observations and description evidence associations.
   Workspaces and reusable characters/evidence remain. A key referencing any
   affected description blocks deletion with `409` and rolls back the operation.
-  Specimens currently assigned through `specimen_references.species_id` also
+  Legacy specimens assigned through `specimen_references.species_id` also
   block deletion with `409` and a specific JSON error explaining that specimens
   must be reassigned or deleted first. After that, the usual cascade/key-reference
-  rules apply. The API does not clear assignments or delete specimens to force a
+  rules apply. Workspace specimen identifications also restrict deletion. The API does not clear assignments or delete specimens to force a
   species deletion, and it does not return raw MySQL/MariaDB FK errors.
 - `DELETE /characters/:id` cascades character states and workspace character
   memberships. Existing character observations or key character selections
@@ -498,128 +497,140 @@ Authorization remains the existing Firebase admin claim. Workspace owner_uid and
 currently curate any workspace; collaborator editing permissions remain a backend
 gap. No browser filtering is used or described as a security mechanism.
 
-The Specimens manager at `/admin/taxonomy/specimens` is global and remains usable
-without selecting a workspace. Workspace changes preserve its search and do not
-add workspace filters or memberships. Character scoring is reserved for Data
-Entry. Curated search uses the durable taxonomy DB, matching internal record ID,
-institution code, collection code, catalog number, label, occurrence key, and current species
-genus/epithet/working name. Up to eight whitespace-separated terms must each match
-at least one field; SQL LIKE metacharacters are escaped. Exact record/occurrence
-IDs rank first, followed by recent IDs, with a 30-record limit. The empty search
-shows recent global records. Results and detail include string IDs, consistent
-nested current-species metadata, and an aggregate `observation_count` on search/detail.
+The normal Specimens tab at `/admin/taxonomy/specimens` is headed **Specimens in
+[workspace name]**. It shows global vouchers currently interpreted in that
+workspace, not vouchers owned by it. Inclusion is inferred exclusively from a row
+in `workspace_specimen_identifications` for the selected workspace. There is no
+separate `workspace_specimens` table. A specimen imported in USA does not appear
+in Canada's normal list until Canada records its own identification. Switching
+workspace refreshes the list while preserving the search text. With no workspace,
+the page shows instructions and no global list; Add specimen remains available.
 
-The specimen finder uses `johnhash_phorid_research.gbif_occurrence_phoridae` through
-the existing `dbGbif` pool. Its actual configured columns/indexes were inspected
-read-only. Routine lookup searches existing `scientific_name`,
-`accepted_scientific_name`, `species`, `genus`, `specific_epithet`,
-`institution_code`, `collection_code`, `catalog_number`, `recorded_by`, `locality`,
-`verbatim_locality`, `state_province`, `country`, and occurrence ID. Token matches use AND across
-terms and OR across fields. Exact institution/collection/catalog/species/genus
-terms rank before substrings, then preserved specimens, then occurrence ID.
-Canonical positive numeric queries of at least eight digits use exact `gbifid`
-primary-key lookup; include an institution or other term when searching an
-ambiguous long numeric catalog number. Short and leading-zero catalog tokens
-remain fuzzy text. Explicit import keys always resolve exactly, including short
-occurrence IDs. Fuzzy contains searches may scan
-the snapshot; no new research indexes or migrations are introduced.
+`GET /workspaces/:workspaceId/specimens?q=...` is the normal list endpoint.
+Its SQL joins global `specimen_references` to the selected workspace's
+`workspace_specimen_identifications` and identified `species`. Search applies
+inside that set, matching voucher identity, labels, occurrence/record IDs and
+that workspace's scientific/working species name. It returns up to 30 rows with
+`workspace_identification`, nested species metadata, `observation_count`, and
+batched `external_taxonomy` from the local research snapshot. No per-voucher
+requests or live GBIF calls are made. Empty q lists recent identified vouchers;
+invalid q/IDs return `400`, missing workspaces `404`. Admin authentication applies.
 
-Live lookup is explicit via “Search current GBIF”; React only calls the authenticated
-taxonomy backend. Exact keys use `GET /v1/occurrence/{key}`. Broad lookup resolves
-the unique accepted Phoridae family from GBIF taxon search in the legacy Backbone,
-then calls `/v1/occurrence/search` with `q`, `familyKey`, and explicit Backbone
-`checklistKey`. It examines at most 100 upstream results, retains useful Phoridae
-voucher records matching every query token, prefers preserved specimens, and
-returns at most 30. Refine broad searches if needed. Deleted/missing exact keys
-yield an empty lookup; import of an unavailable occurrence returns `404`. Live
-timeouts/unavailability return controlled `504`/`502`; cache failure returns `503`.
-Cached results stay usable on live failure, and manual creation remains available.
-No live response is automatically written into the research snapshot.
+The Add specimen dialog searches the GLOBAL Phorid.net registry in parallel with
+the local GBIF snapshot; explicit current GBIF search and manual creation remain
+available. `GET /specimen-references/search?q=...&workspace_id=...` intentionally
+continues returning global registry results with selected-workspace annotation,
+including vouchers with no identification there. `GET /specimen-references/:id`
+with optional `workspace_id` provides the same annotation. Both validate context
+IDs, return explicit legacy data separately, and never use another workspace's
+interpretation as fallback. The global search's optional additional `species_id`
+filter still requires `workspace_id` for explicit future Data Entry queries.
+External scientific-name search is available through the GBIF finder.
 
-Both sources return `{results, source, query_type, limit:30}`, where `query_type`
-is `fuzzy` or `occurrence_key`. Each result contains:
+Existing global results show **Already in Phorid.net**, their current-workspace
+status, and cached GBIF accepted name when available. **Use specimen in this
+workspace** opens that same global voucher's workspace interpretation editor.
+Saving calls the existing identification PUT, reuses the voucher, ensures species
+membership, and makes it appear in the normal workspace list. Existing identified
+results show **Already in this workspace** and offer **Open existing specimen**;
+opening does not write another voucher or identification. Cache/live hits for the
+same occurrence as a registry result are collapsed into that global result.
+GBIF finder lookup accepts optional `workspace_id` for the same inclusion-status
+annotation; this never restricts its global candidate universe. External GBIF
+names do not control normal-list inclusion.
+
+The external finder searches `johnhash_phorid_research.gbif_occurrence_phoridae`.
+Exact numeric occurrence keys use the snapshot's `gbifid`; ordinary text terms
+match identity, names, locality and collector fields. Live search is explicit
+through `/lookup/gbif/specimens?q=...&source=live_gbif`; cache is the default source.
+Both sources return normalized candidates. Redundant leading institution and/or
+collection tokens are conservatively removed from catalog numbers. Ambiguous
+strings and leading zeroes are preserved. Labels remain separate free text.
+Candidate taxonomy suggestions match existing species by COL XR identifier, then
+legacy GBIF Backbone identifier, then a unique exact published scientific name.
+A source name is external information, never absolute taxonomic truth.
+
+Occurrence import is one backend workflow:
 
 ```json
 {
-  "gbif_occurrence_key": "1802551766",
-  "institution_code": "LACM",
-  "collection_code": "ENT",
-  "catalog_number": "12345",
-  "scientific_name": "Myriophora wellsorum",
-  "genus": "Myriophora",
-  "specific_epithet": "wellsorum",
-  "gbif_taxon_key": "9608828",
-  "col_xr_taxon_key": "8CYC6",
-  "country": "United States",
-  "locality": "California",
-  "event_date": "2024-05-12",
-  "recorded_by": null,
-  "basis_of_record": "PRESERVED_SPECIMEN",
-  "source": "live_gbif",
-  "existing_specimen_id": null,
-  "species_suggestion": null,
-  "species_match": null
+  "gbif_occurrence_key": "3417795479",
+  "workspace_id": "2",
+  "accept_gbif_identification": true,
+  "identification_notes": "Reviewed voucher morphology"
 }
 ```
 
-Unavailable fields are null. The legacy snapshot has no COL XR column, so cached
-COL keys are null. Live IDs are read independently from GBIF's taxonomic
-classifications; legacy keys never acquire COL semantics. Species suggestions
-prefer COL XR identity, then legacy GBIF identity, then one unambiguous exact
-published genus/epithet match. Name-only ambiguity is never automatically merged.
-The researcher must confirm a current assignment, may select another global
-published/WIP species, or import a suggested accepted species using the existing
-COL resolver through global `/species/import`. That route returns `{species,
-created}` with `200` and intentionally creates no workspace membership.
+Alternatively supply `species_id` to accept a matched global species or override
+the external suggestion with another published/WIP species. The acceptance flag
+and explicit species ID are mutually exclusive. Without `workspace_id`, omit both
+identification choices to import/reuse only the global voucher. The UI defaults
+to recording an identification when a workspace is selected, but permits omitting
+it. This is not an optional membership operation: if an identification is saved,
+species membership is mandatory and automatic.
 
-Before displaying either source, the backend annotates an existing taxonomy
-specimen by its durable `gbif_occurrence_key`. Existing occurrences show “Already
-in taxonomy database” and open the curated record. The frontend also collapses
-cache/live hits by occurrence key, preferring the live presentation. Import
-accepts only the occurrence key, required species ID, and optional institution,
-collection, catalog, label, and notes. It resolves the occurrence server-side, enforces schema
-limits, and creates `reference_type=gbif` transactionally. Existing/retried imports
-return the existing record without changing its assignment or metadata; database
-uniqueness and duplicate-race recovery prevent a second occurrence record.
-The response is `200` with `{specimen, created}`. Validation is `400`, missing
-species/occurrence `404`, and relationship/concurrency conflicts controlled `409`.
-The direct specimen POST retains its existing duplicate-key `409` behavior.
+Remote occurrence/COL reads finish before transaction locks. Accepting a missing
+global species resolves an unambiguous accepted COL species using the existing
+resolver, without a separate Import species click. Fuzzy/ambiguous or unavailable
+resolution returns a controlled error and leaves all database state unchanged.
+The transaction creates/reuses the global species, creates/reuses ONE global
+voucher by occurrence key, saves the chosen workspace interpretation and ensures
+membership. Any database failure rolls back all four changes. Retries reuse
+species/voucher/membership and update the single workspace identification. An
+explicit repeat import can update that selected workspace's interpretation; other
+workspaces and legacy assignments remain untouched. No refresh alone updates an
+interpretation. Import returns `200` with `{specimen, created}`; `created` describes
+the voucher. New specimen `species_id` remains null.
 
-Manual creation uses the existing `reference_type=local` POST and requires a
-published or WIP species. Before saving catalog metadata, the UI checks exact
-case-insensitive, trimmed institution/collection/catalog matches through
-`/specimen-references/duplicates`. Catalog number is required for this check;
-every provided institution and collection code must agree. When collection is
-omitted or blank, matching falls back to institution/catalog and includes both
-null and known collection codes. This preserves useful warnings for older clients.
-It warns and offers existing records or explicit separate creation. This is a
-scientific review hint, not identity proof or a new uniqueness constraint.
-Different GBIF keys for the same physical voucher are likewise not automatically
-merged. Collection code is stored directly in its nullable taxonomy column. Forms
-place it between institution and catalog, and the table, lookup, duplicate panel,
-and detail compose available components such as `LACM ENT 12345`, `USNM 987654`,
-`ENT 12345`, or `12345`. Missing components do not introduce extra separators.
-Labels remain independent free text throughout creation, import, and editing.
-Other unsupported external metadata is shown during lookup and can be recorded
-in notes explicitly; no new schema columns are invented.
+Manual `POST /specimen-references` uses `reference_type=local`, optional voucher
+fields, and optional `workspace_id` plus `species_id` and `identification_notes`.
+Without workspace it requires no species. With a workspace identification,
+creation, interpretation and membership commit atomically. Catalog-based manual
+duplicate checks remain warnings, not uniqueness constraints or automatic merges.
+The UI allows inspecting existing records or explicitly creating a separate voucher.
 
-Editing retains the specimen's global internal ID and external occurrence identity
-while allowing supported metadata and current `species_id` changes. GBIF-linked
-records are labelled accordingly. Legacy null assignments remain readable and
-are not migrated automatically; saving requires a non-null assignment. The UI
-states that changing the current species assignment does not alter observations
-or evidence. Existing PATCH protections preserve states, publication associations,
-description-specimen relationships, synthesized observations, evidence links, and
-provenance. Neither a retry nor a GBIF refresh silently reassigns a curated record.
+The drawer separates **Voucher identity**, **External GBIF taxonomy**, and
+**Workspace interpretation**. GBIF institution/collection/catalog/occurrence identity
+is read-only. Metadata PATCH rejects source identity or GBIF reference-type
+transitions with `409`; local/manual identity, labels and voucher notes remain
+editable. A future correction model may preserve source and local values separately.
+Identification notes are edited separately through PUT for the selected workspace.
 
-GBIF references: [Occurrence API](https://techdocs.gbif.org/en/openapi/v1/occurrence),
-[Species API](https://techdocs.gbif.org/en/openapi/v1/species),
-[multiple-taxonomy response format](https://techdocs.gbif.org/en/data-processing/taxonomy-interpretation).
+`GET /specimen-references/:id/external-taxonomy?source=cache` reads only the local
+snapshot and returns `{source, taxonomy}`; missing snapshot data is null. The drawer
+labels it **GBIF accepted name — local snapshot**. **Check current GBIF** explicitly
+requests `source=live_gbif`. The response includes external scientific and accepted
+names and relevant legacy GBIF/COL identifiers. These routes perform no curated
+writes. Lists batch their cache reads and never perform live GBIF calls; research
+cache outages do not hide global voucher records. External live changes never
+silently rewrite workspace identifications or global evidence.
 
-Primary service references:
-[COL search](https://catalogueoflife.github.io/rcol/reference/clb_usage_search.html),
-[COL Extended Release alias](https://catalogueoflife.github.io/rcol/reference/col_key.html),
-[GBIF COL XR migration and identifier matching](https://data-blog.gbif.org/post/catalogue-of-life-taxonomic-backbone/).
+Legacy-column audit and eventual removal plan:
+
+- `taxonomyProvenance.withSpecimenSpecies` reads legacy IDs and species metadata
+  for backward-compatible global, observation and provenance responses.
+- `taxonomySpecimens.withSpecimenSummary` retains those explicit legacy fields
+  alongside the separate workspace identification.
+- `routes/taxonomy.js` description-detail specimen reads select the legacy column
+  and expose explicitly labelled legacy aliases. Description species itself is
+  still the historical interpretation, independent of specimen identification.
+- `routes/taxonomyEditing.js` global search retains the legacy species-name join;
+  species deletion retains the legacy-reference guard. Duplicate and metadata
+  responses retain legacy serialization. All new assignment writes are rejected
+  or routed to the new identification table.
+- The authoritative schema still contains the legacy column, index/foreign-key
+  relationship and dump values. Test fixtures deliberately seed a few historical
+  assignments to verify compatibility. The drawer labels them as legacy, with no
+  workspace fallback. There is no automatic backfill.
+
+For eventual removal: inventory remaining stored values and consumers, review
+provenance with researchers to associate only supported assignments with explicit
+workspaces, and leave uncertain legacy data archived/unassigned. Never copy every
+legacy assignment into every workspace. Migrate consumers to workspace APIs and
+remove deprecated wire aliases, the legacy search join, and deletion guard. After
+validation, backups and an agreed compatibility window, use a separate reviewed
+schema migration to drop the legacy FK/index/column. This task performs none of
+those schema or data migrations and builds no Data Entry or identification history.
 
 The Character Manager at `/admin/taxonomy/characters` uses the shared Workbench
 workspace context. Its table shows the selected global definitions, anatomical

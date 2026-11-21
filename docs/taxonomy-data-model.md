@@ -2,10 +2,31 @@
   observations → species description (taxonomic hypothesis/interpretation) →
   description-level synthesized character observations → identification key.
 - A specimen and a publication are evidence; neither is itself a taxonomic score.
-- Species and specimens are global scientific entities. Every specimen has a
-  current taxonomic species assignment, independent of workspace membership.
-  New specimen API records require species_id. The schema still permits NULL
-  for legacy records, which remain readable until explicitly assigned.
+- Specimens are global physical vouchers. Taxonomic identification is a workspace
+  interpretation, never a single global Phorid.net truth. A voucher can be
+  Myriophora kungae in one workspace and Myriophora sp. JH-04 in another.
+- `workspace_specimen_identifications` holds ONE CURRENT interpretation for each
+  `(workspace_id, specimen_reference_id)`: species, identifying Firebase user,
+  notes, and timestamps. PUT creates or replaces the current interpretation;
+  there is no identification-history model. The same global voucher is reused.
+- Identification implies workspace species membership. The API saves both in one
+  transaction, reuses membership, and never removes the old species automatically
+  after reassignment. Removing a species membership while identifications refer
+  to it is rejected. Published and WIP species are both valid identifications.
+- The nullable `specimen_references.species_id` column is LEGACY. New specimen
+  workflows never write it; metadata PATCH rejects it. Legacy values remain
+  explicitly readable as legacy data, not a workspace fallback. They are not
+  copied into any workspace automatically. No schema changes or migration occur.
+- GBIF/cache scientific and accepted names, GBIF Backbone keys, and COL XR keys
+  are external reference data. Accepting an import suggestion explicitly records
+  an interpretation only in the selected workspace. A GBIF refresh never writes
+  a workspace interpretation. With no workspace, import creates/reuses only the
+  global voucher and does not import a species or create membership.
+- GBIF institution, collection, catalog number, and occurrence key are read-only
+  source identity in the normal workflow. Local/manual identity remains editable.
+  Voucher labels/notes are local descriptive metadata; identification notes are
+  stored separately with the workspace interpretation. A future correction model
+  may preserve source and locally corrected values separately.
 - Working/code-name species are valid assignments: for example, Apocephalus sp.
   AZ-17 has genus Apocephalus, specific_epithet NULL, species_status
   work_in_progress, and working_name AZ-17. A formal published name is not required.
@@ -21,12 +42,11 @@
   required or stored. A WIP taxon without an epithet requires a nonblank working
   name; neither external identifier is required. Likely curated matches are offered
   for reuse without imposing name-string uniqueness.
-- Specimen assignment may change without changing the physical specimen's ID,
-  attributed observations, description-level synthesis, publications, or evidence
-  links. Historical description-specimen relationships remain valid even when the
-  specimen's current species differs from that interpretation's species.
-- The schema restricts species deletion while specimens are currently assigned
-  to it. Reassign or delete those specimen references before deleting the species.
+- Changing a workspace identification affects only that workspace. Global raw
+  observations, states, synthesis, publications, description/specimen links,
+  evidence and provenance remain unchanged. Historical descriptions may disagree
+  with any workspace's current identification. Species deletion is restricted by
+  workspace identifications and, transitionally, legacy specimen references.
 - A specimen observation is an attributed assertion about an individual specimen.
   Multiple taxonomists may record different observations of the same specimen
   and character. Those competing assertions coexist with their own IDs,
@@ -106,17 +126,23 @@
   johnhash_phorid_research is a rebuildable/cacheable GBIF snapshot, not the
   authoritative identity link. Durable curated taxonomy records do not depend
   on its internal primary keys or cross-database foreign keys.
-- The Specimens manager searches global curated records independently of workspace
-  selection, including with no workspace selected. Specimen lookup uses one fuzzy
-  search interface: first the local GBIF research snapshot, then an explicit
-  “Search current GBIF” fallback for newer/missing records. Both sources normalize
-  to the same candidate shape. GBIF occurrence keys are durable external IDs stored
-  directly in taxonomy; research-cache row IDs never become specimen identities.
-- Each new specimen requires a current global species assignment; published and
-  WIP/code-name species are both valid. GBIF identification is only an import
-  suggestion, matched by COL XR, then legacy GBIF, then a unique exact scientific
-  name. The researcher confirms the assignment. Refreshes and repeated imports
-  never automatically change a curated assignment or rewrite evidence history.
+- The normal Specimens tab is workspace-scoped: it includes global vouchers
+  having an identification row in `workspace_specimen_identifications` for the
+  selected workspace. No `workspace_specimens` table exists and this working set
+  is interpretation, not ownership. Without a selected workspace the tab shows
+  instructions instead of the entire global registry. Search stays within the set.
+- Add specimen searches and reuses the GLOBAL Phorid.net specimen registry,
+  including vouchers not interpreted in the current workspace, alongside the
+  local GBIF snapshot and explicit current-GBIF fallback. Existing vouchers are
+  reused by recording a workspace identification, which ensures species
+  membership without duplicating the physical voucher. The same global voucher
+  can participate in multiple workspaces with different identifications. GBIF
+  occurrence keys remain durable external IDs; cache row IDs are not identities.
+- When recording an identification during import, existing taxonomy suggestions
+  match by COL XR, legacy GBIF identifier, then unambiguous exact scientific name.
+  Missing accepted species can be resolved/imported as part of the final specimen
+  import transaction. The user can override the suggestion with a published/WIP
+  species, omit identification, or import globally without selecting a workspace.
 - Occurrence import is idempotent by GBIF occurrence key. Likely manual duplicates
   based on institution/collection/catalog metadata are warnings, not a new uniqueness rule.
 - Specimen identity has separate, independently nullable components:
@@ -132,7 +158,7 @@
   supplied identity components. Without collection code, institution/catalog
   matching remains available and includes records with null collection codes.
   Omitting collection code on POST leaves it null; omitting it on PATCH preserves
-  its existing value. Explicit null clears it without changing species or evidence.
+  its existing value. Explicit null clears local identity metadata without changing identifications or evidence.
 - Character scoring belongs in the later Data Entry workflow, not Specimens.
 - Current API authorization is admin-wide. Workspace owner_uid and visibility
   metadata do not enforce owner/collaborator editing rights. The Species UI

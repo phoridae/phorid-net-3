@@ -1,3 +1,4 @@
+const { normalizeSpecimenIdentity } = require("../../frontend/src/utils/specimenIdentity");
 const cache = require("../dbGbif");
 const { COL_XR, BACKBONE } = require("./gbifTaxonomy");
 
@@ -35,6 +36,7 @@ function normalize(row, source) {
     institution_code: string(live ? row.institutionCode : row.institution_code),
     collection_code: string(live ? row.collectionCode : row.collection_code),
     catalog_number: string(live ? row.catalogNumber : row.catalog_number),
+    accepted_scientific_name: string(live ? col?.canonicalName || row.acceptedScientificName || row.species : row.accepted_scientific_name || row.species),
     scientific_name: string(live ? row.species || row.scientificName : row.species || row.scientific_name),
     genus: string(live ? col?.genericName || row.genus : row.genus),
     specific_epithet: string(live ? col?.specificEpithet || row.specificEpithet : row.specific_epithet),
@@ -45,6 +47,16 @@ function normalize(row, source) {
     basis_of_record: string(live ? row.basisOfRecord : row.basis_of_record), source,
     existing_specimen_id: null,
   };
+  Object.assign(candidate, normalizeSpecimenIdentity(candidate));
+  // Snapshot species often supplies the binomial while specific_epithet is empty.
+  // Use only an explicit binomial (never infer from cf., aff., or higher ranks).
+  const binomial = String(live ? col?.canonicalName || row.species || "" : row.species || row.accepted_scientific_name || "").trim();
+  const parts = binomial.match(/^([A-Z][a-z]+) ([a-z][a-z-]+)$/);
+  if (parts && !col?.genericName && !col?.specificEpithet) {
+    candidate.genus = parts[1];
+    candidate.specific_epithet = parts[2];
+    candidate.scientific_name = binomial;
+  }
   // Routine lookup surfaces specimen evidence, rather than unvouchered sightings.
   return voucherTypes.includes(candidate.basis_of_record) || candidate.catalog_number ? candidate : null;
 }

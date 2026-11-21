@@ -17,6 +17,7 @@ async function withSpecimenSpecies(db, specimens) {
   return specimens.map((row) => ({
     ...serialize(row), species_id: id(row.species_id),
     species: species.get(id(row.species_id)) || null,
+    legacy_species_id: id(row.species_id), legacy_species: species.get(id(row.species_id)) || null,
   }));
 }
 
